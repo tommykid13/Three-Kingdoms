@@ -1,4 +1,4 @@
-import { type CSSProperties, useCallback, useEffect, useMemo, useState } from "react";
+import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   getDisplayAssetPath,
   loadGameData,
@@ -14,6 +14,7 @@ import {
   activateSkillWithSelection,
   confirmDiscard,
   distanceBetweenSeats,
+  finishAiPlayPhase,
   getCardPlayInfo,
   getDyingCards,
   getDiscardOverflow,
@@ -63,6 +64,18 @@ import {
   setPaused,
   summarizeState,
 } from "./game/turn";
+import {
+  aiProviderLabels,
+  buildAiDecisionPayload,
+  buildAiLegalActions,
+  defaultAiModels,
+  loadStoredAiConfig,
+  requestAiDecision,
+  saveStoredAiConfig,
+  type AiLegalAction,
+  type AiProviderConfig,
+  type AiProviderId,
+} from "./game/llmAi";
 import type { GameState, PendingAction, Role, Seat } from "./game/types";
 import "./styles.css";
 
@@ -751,6 +764,149 @@ const SetupScreen = ({
   );
 };
 
+const AiSettingsPanel = ({
+  config,
+  status,
+  onChange,
+  onClose,
+}: {
+  config: AiProviderConfig;
+  status: string;
+  onChange: (config: AiProviderConfig) => void;
+  onClose: () => void;
+}) => {
+  const providerOptions: AiProviderId[] = ["local", "google", "deepseek", "glm"];
+  const usesExternalProvider = config.provider !== "local";
+  const updateProvider = (provider: AiProviderId) => {
+    onChange({
+      ...config,
+      provider,
+      enabled: provider === "local" ? false : config.enabled,
+      apiKey: provider === "local" ? "" : config.apiKey,
+      model:
+        provider === "local"
+          ? config.model
+          : defaultAiModels[provider] ?? config.model,
+    });
+  };
+
+  return (
+    <section className="ai-settings-panel" data-testid="ai-settings-panel">
+      <div className="ai-settings-card">
+        <div className="ai-settings-heading">
+          <div>
+            <p className="eyebrow">AI 1.1</p>
+            <h2>外部 AI 决策</h2>
+          </div>
+          <button type="button" onClick={onClose}>
+            关闭
+          </button>
+        </div>
+
+        <label className="settings-toggle">
+          <input
+            type="checkbox"
+            checked={config.enabled}
+            disabled={!usesExternalProvider}
+            onChange={(event) =>
+              onChange({
+                ...config,
+                enabled: event.currentTarget.checked,
+              })
+            }
+          />
+          <span>启用外部模型参与 AI 出牌</span>
+        </label>
+
+        <div className="settings-grid">
+          <label>
+            <span>供应商</span>
+            <select
+              value={config.provider}
+              onChange={(event) => updateProvider(event.currentTarget.value as AiProviderId)}
+            >
+              {providerOptions.map((provider) => (
+                <option key={provider} value={provider}>
+                  {aiProviderLabels[provider]}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span>模型</span>
+            <input
+              value={config.model}
+              disabled={!usesExternalProvider}
+              onChange={(event) =>
+                onChange({
+                  ...config,
+                  model: event.currentTarget.value,
+                })
+              }
+            />
+          </label>
+
+          <label>
+            <span>API Key</span>
+            <input
+              value={config.apiKey}
+              disabled={!usesExternalProvider}
+              type="password"
+              autoComplete="off"
+              placeholder="稍后自行填写"
+              onChange={(event) =>
+                onChange({
+                  ...config,
+                  apiKey: event.currentTarget.value,
+                })
+              }
+            />
+          </label>
+
+          <label>
+            <span>超时</span>
+            <select
+              value={config.timeoutMs}
+              disabled={!usesExternalProvider}
+              onChange={(event) =>
+                onChange({
+                  ...config,
+                  timeoutMs: Number(event.currentTarget.value),
+                })
+              }
+            >
+              <option value={8000}>8 秒</option>
+              <option value={12000}>12 秒</option>
+              <option value={18000}>18 秒</option>
+            </select>
+          </label>
+        </div>
+
+        <label className="settings-toggle">
+          <input
+            type="checkbox"
+            checked={config.saveKey}
+            disabled={!usesExternalProvider}
+            onChange={(event) =>
+              onChange({
+                ...config,
+                saveKey: event.currentTarget.checked,
+              })
+            }
+          />
+          <span>在本机浏览器保存 API Key</span>
+        </label>
+
+        <div className="ai-settings-status">
+          <strong>状态</strong>
+          <span>{status}</span>
+        </div>
+      </div>
+    </section>
+  );
+};
+
 const actionRequiredSeatId = (pending: PendingAction | null): number | null => {
   if (!pending || pending.type === "wuxie_response") {
     return null;
@@ -810,6 +966,9 @@ function App() {
   const [data, setData] = useState<GameData | null>(null);
   const [game, setGame] = useState<GameState | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [aiConfig, setAiConfig] = useState<AiProviderConfig>(() => loadStoredAiConfig());
+  const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
+  const [aiStatus, setAiStatus] = useState("本地规则 AI");
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [selectedTargetIds, setSelectedTargetIds] = useState<number[]>([]);
   const [selectedDiscardIds, setSelectedDiscardIds] = useState<string[]>([]);
@@ -818,6 +977,7 @@ function App() {
   const [selectedQiaobianMoveCardId, setSelectedQiaobianMoveCardId] = useState<string | null>(null);
   const [setupDraft, setSetupDraft] = useState<SetupDraft | null>(null);
   const [generalPreview, setGeneralPreview] = useState<General | null>(null);
+  const aiRequestKeyRef = useRef("");
 
   useEffect(() => {
     loadGameData()
@@ -829,6 +989,10 @@ function App() {
         setError(reason instanceof Error ? reason.message : String(reason));
       });
   }, []);
+
+  useEffect(() => {
+    saveStoredAiConfig(aiConfig);
+  }, [aiConfig]);
 
   const generalPacks = useMemo(
     () => (data ? summarizeGeneralPacks(data.generals) : {}),
@@ -1890,6 +2054,50 @@ function App() {
     );
   }, [selectedQiaobianMoveCardId, selectedTargetIds]);
 
+  const applyExternalAiAction = useCallback(
+    (
+      current: GameState,
+      action: AiLegalAction | undefined,
+      reason?: string,
+    ) => {
+      const actor = current.seats[current.turn.activeSeatId];
+      if (!actor || actor.controller !== "ai" || current.turn.phase !== "出牌") {
+        return current;
+      }
+
+      const withReason = (next: GameState) =>
+        reason
+          ? {
+              ...next,
+              log: [`${actor.general.name} 外部AI：${reason}`, ...next.log].slice(0, 18),
+            }
+          : next;
+
+      if (!action || action.kind === "local") {
+        return withReason(advanceGame(current));
+      }
+
+      if (action.kind === "end") {
+        return withReason(finishAiPlayPhase(current));
+      }
+
+      const next = playCardFromHand(
+        current,
+        actor.id,
+        action.cardInstanceId,
+        action.targetSeatId,
+        action.extraTargetSeatIds ?? [],
+      );
+
+      if (next.pendingAction || next.winner) {
+        return withReason(next);
+      }
+
+      return withReason(finishAiPlayPhase(next));
+    },
+    [],
+  );
+
   useEffect(() => {
     if (!selectedCardId || !playerSeat?.hand.some((card) => card.instance_id === selectedCardId)) {
       setSelectedCardId(null);
@@ -1994,18 +2202,130 @@ function App() {
       return;
     }
 
+    const canUseExternalAi =
+      aiConfig.enabled &&
+      aiConfig.provider !== "local" &&
+      aiConfig.apiKey.trim().length > 0 &&
+      game.turn.phase === "出牌";
+
+    if (canUseExternalAi) {
+      const legalActions = buildAiLegalActions(game, activeSeat.id);
+      const requestKey = [
+        game.seed,
+        game.turn.round,
+        game.turn.activeSeatId,
+        game.turn.phase,
+        game.turn.phaseStep,
+        activeSeat.hand.map((card) => card.instance_id).join("."),
+      ].join(":");
+
+      if (legalActions.length === 0) {
+        const timer = window.setTimeout(() => {
+          setGame((current) => (current ? finishAiPlayPhase(current) : current));
+        }, 300);
+        return () => window.clearTimeout(timer);
+      }
+
+      if (aiRequestKeyRef.current === requestKey) {
+        return;
+      }
+
+      aiRequestKeyRef.current = requestKey;
+      setAiStatus(`${aiProviderLabels[aiConfig.provider]} 思考中：${activeSeat.general.name}`);
+      const payload = buildAiDecisionPayload(game, activeSeat.id, legalActions);
+      let cancelled = false;
+
+      requestAiDecision(aiConfig, payload)
+        .then((decision) => {
+          if (cancelled) {
+            return;
+          }
+          setAiStatus(
+            `${aiProviderLabels[aiConfig.provider]} 选择：${
+              legalActions.find((action) => action.id === decision.actionId)?.label ??
+              decision.actionId
+            }`,
+          );
+          setGame((current) => {
+            if (!current) {
+              return current;
+            }
+            const currentSeat = current.seats[current.turn.activeSeatId];
+            const stillSameDecisionPoint =
+              current.seed === game.seed &&
+              current.turn.round === game.turn.round &&
+              current.turn.activeSeatId === game.turn.activeSeatId &&
+              current.turn.phase === "出牌" &&
+              !current.pendingAction &&
+              !current.winner &&
+              currentSeat?.controller === "ai";
+            if (!stillSameDecisionPoint) {
+              return current;
+            }
+            const freshActions = buildAiLegalActions(current, currentSeat.id);
+            return applyExternalAiAction(
+              current,
+              freshActions.find((action) => action.id === decision.actionId),
+              decision.reason,
+            );
+          });
+        })
+        .catch((reason: unknown) => {
+          if (cancelled) {
+            return;
+          }
+          const message = reason instanceof Error ? reason.message : String(reason);
+          setAiStatus(`${aiProviderLabels[aiConfig.provider]} 调用失败，改用本地 AI：${message}`);
+          setGame((current) => {
+            if (!current) {
+              return current;
+            }
+            const currentSeat = current.seats[current.turn.activeSeatId];
+            if (
+              currentSeat?.controller !== "ai" ||
+              current.turn.phase !== "出牌" ||
+              current.pendingAction ||
+              current.winner
+            ) {
+              return current;
+            }
+            return advanceGame(current);
+          });
+        });
+
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    if (
+      aiConfig.enabled &&
+      aiConfig.provider !== "local" &&
+      game.turn.phase === "出牌" &&
+      !aiConfig.apiKey.trim()
+    ) {
+      setAiStatus(`${aiProviderLabels[aiConfig.provider]} 未填写 API Key，使用本地 AI`);
+    } else {
+      setAiStatus(aiProviderLabels[aiConfig.provider]);
+    }
+
     const timer = window.setTimeout(() => {
       setGame((current) => (current ? advanceGame(current) : current));
     }, 720);
 
     return () => window.clearTimeout(timer);
-  }, [activeSeat, game]);
+  }, [activeSeat, aiConfig, applyExternalAiAction, game]);
 
   useEffect(() => {
     window.render_game_to_text = () =>
       JSON.stringify(
         game
-          ? summarizeState(game)
+          ? {
+              ...summarizeState(game),
+              aiProvider: aiProviderLabels[aiConfig.provider],
+              externalAiEnabled: aiConfig.enabled && aiConfig.provider !== "local",
+              aiStatus,
+            }
           : {
               mode: data ? "setup" : "loading",
               selectedGenerals: data?.generals.length ?? 0,
@@ -2023,8 +2343,8 @@ function App() {
       for (let i = 0; i < steps; i += 1) {
         setGame((current) => (current ? advanceGame(current) : current));
       }
-    };
-  }, [data, game, setupDraft]);
+  };
+  }, [aiConfig.enabled, aiConfig.provider, aiStatus, data, game, setupDraft]);
 
   if (error) {
     return (
@@ -2106,9 +2426,16 @@ function App() {
       <section className="table-header">
         <div>
           <p className="eyebrow">浏览器版单机身份局</p>
-          <h1>肥喵多尼的AI三国杀</h1>
+          <h1>肥喵多尼的AI三国杀 <span>v1.1</span></h1>
         </div>
         <div className="header-actions">
+          <button
+            type="button"
+            onClick={() => setAiSettingsOpen((current) => !current)}
+            data-testid="ai-settings-toggle"
+          >
+            AI 设置
+          </button>
           <button type="button" onClick={togglePaused} data-testid="toggle-ai">
             {game.paused ? "继续 AI" : "暂停 AI"}
           </button>
@@ -2117,6 +2444,21 @@ function App() {
           </button>
         </div>
       </section>
+
+      {aiSettingsOpen ? (
+        <AiSettingsPanel
+          config={aiConfig}
+          status={
+            aiConfig.enabled &&
+            aiConfig.provider !== "local" &&
+            !aiConfig.apiKey.trim()
+              ? `${aiProviderLabels[aiConfig.provider]} 等待 API Key`
+              : aiStatus
+          }
+          onChange={setAiConfig}
+          onClose={() => setAiSettingsOpen(false)}
+        />
+      ) : null}
 
       <section className="table-layout">
         <div className="table-surface">

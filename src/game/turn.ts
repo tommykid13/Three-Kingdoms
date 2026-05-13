@@ -6851,6 +6851,38 @@ const performAiPlay = (game: GameState, seat: Seat) => {
   appendLog(game, `${seat.general.name} 暂不出牌。`);
 };
 
+export const performLocalAiPlayStep = (source: GameState): GameState => {
+  const game = cloneGame(source);
+  if (game.pendingAction || game.winner) {
+    return game;
+  }
+
+  const seat = activeSeat(game);
+  if (!seat?.alive || seat.controller !== "ai" || game.turn.phase !== "出牌") {
+    return game;
+  }
+
+  performAiPlay(game, seat);
+  return game;
+};
+
+export const finishAiPlayPhase = (source: GameState): GameState => {
+  const game = cloneGame(source);
+  if (game.pendingAction || game.winner) {
+    return game;
+  }
+
+  const seat = activeSeat(game);
+  if (!seat?.alive || seat.controller !== "ai" || game.turn.phase !== "出牌") {
+    return game;
+  }
+
+  appendLog(game, `${seat.general.name} 结束出牌阶段。`);
+  game.turn.phase = "弃牌";
+  game.turn.phaseStep += 1;
+  return game;
+};
+
 const resetTurnFlags = (game: GameState) => {
   game.turn.shaPlayed = false;
   game.turn.jiuUsed = false;

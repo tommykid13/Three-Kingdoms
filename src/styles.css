@@ -234,6 +234,14 @@ button:disabled {
   letter-spacing: 0;
 }
 
+.table-header h1 span {
+  display: inline-block;
+  margin-left: 8px;
+  color: #176e5d;
+  font-size: 1rem;
+  vertical-align: middle;
+}
+
 .eyebrow {
   margin: 0 0 8px;
   color: #8e1f2d;
@@ -261,6 +269,86 @@ button:disabled {
 
 .header-actions button {
   padding: 0 14px;
+}
+
+.ai-settings-panel {
+  width: min(var(--game-content-max), 100%);
+  margin: 0 auto 8px;
+}
+
+.ai-settings-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(23, 110, 93, 0.22);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 16px 36px rgba(26, 31, 33, 0.1);
+}
+
+.ai-settings-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.ai-settings-heading h2 {
+  margin: 0;
+  color: #151719;
+  font-size: 1.25rem;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.settings-grid label,
+.settings-toggle {
+  display: grid;
+  gap: 6px;
+  color: #4f5a5e;
+  font-weight: 900;
+}
+
+.settings-toggle {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+}
+
+.settings-toggle input {
+  width: 18px;
+  height: 18px;
+}
+
+.settings-grid input,
+.settings-grid select {
+  min-height: 40px;
+  width: 100%;
+  border: 1px solid rgba(30, 35, 37, 0.16);
+  border-radius: 6px;
+  background: #f9fbfa;
+  color: #1f2426;
+  font-weight: 800;
+  padding: 0 10px;
+}
+
+.ai-settings-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(23, 110, 93, 0.08);
+  color: #2d3a3d;
+  font-weight: 800;
+}
+
+.ai-settings-status strong {
+  color: #176e5d;
 }
 
 .table-surface {
@@ -2367,6 +2455,10 @@ button:disabled {
 }
 
 @media (max-width: 1120px) {
+  .settings-grid {
+    grid-template-columns: repeat(2, minmax(160px, 1fr));
+  }
+
   .setup-general-grid {
     grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
   }
@@ -2479,6 +2571,16 @@ button:disabled {
   .game-shell,
   .app-shell {
     padding: 14px 10px 24px;
+  }
+
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-settings-heading,
+  .ai-settings-status {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .header-actions {
