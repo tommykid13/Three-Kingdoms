@@ -14,8 +14,8 @@ https://feimiaoduoni-ai-sanguosha.pages.dev
 
 - 新增外部 AI 设置面板。
 - 支持 Google Gemini、DeepSeek、GLM 三类 API 作为 AI 出牌阶段的决策来源。
-- API Key 不写入仓库，默认只在当前浏览器会话中使用；勾选“在本机浏览器保存 API Key”后才会保存到本机 `localStorage`。
-- 未启用外部 AI、未填写 API Key、API 调用失败或模型返回非法动作时，游戏会自动回退到本地规则 AI。
+- API Key 不写入仓库，也不会进入前端浏览器；统一放在 Cloudflare Pages 的环境变量 / Secret 中。
+- 未启用外部 AI、服务端 Secret 未配置、API 调用失败或模型返回非法动作时，游戏会自动回退到本地规则 AI。
 - 外部 AI 只能从游戏引擎生成的合法动作列表里选择，最终仍由本地规则引擎执行。
 
 ### 1.0 基础
@@ -54,7 +54,7 @@ npm run deploy:cloudflare
 
 ## 外部 AI 配置
 
-进入游戏后点击右上角 `AI 设置`。
+进入游戏后点击右上角 `AI 设置`。前端只选择供应商、模型和超时时间，不输入 API Key。
 
 可选供应商：
 
@@ -64,6 +64,24 @@ npm run deploy:cloudflare
 - 本地规则 AI
 
 外部 AI 当前接入范围为 AI 角色的出牌阶段决策。判定、响应、濒死、技能结算等仍由本地规则引擎负责，以保证规则合法性和游戏不会因模型输出异常而中断。
+
+### Cloudflare Secret
+
+在 Cloudflare Pages 项目里配置下面任意需要的环境变量：
+
+```text
+GOOGLE_API_KEY 或 GEMINI_API_KEY
+DEEPSEEK_API_KEY
+GLM_API_KEY 或 ZAI_API_KEY
+```
+
+也可以使用 Wrangler 设置：
+
+```bash
+npx wrangler pages secret put GOOGLE_API_KEY --project-name feimiaoduoni-ai-sanguosha
+npx wrangler pages secret put DEEPSEEK_API_KEY --project-name feimiaoduoni-ai-sanguosha
+npx wrangler pages secret put GLM_API_KEY --project-name feimiaoduoni-ai-sanguosha
+```
 
 ## 数据与素材
 
@@ -83,4 +101,4 @@ npm run deploy:cloudflare
 
 ## 注意
 
-这是浏览器静态项目。外部 AI 的 API Key 由玩家自己在浏览器里输入，不会提交到 Git 仓库。若供应商接口不允许浏览器跨域直连，页面会显示调用失败并回退到本地 AI。
+外部 AI 通过 Cloudflare Pages Function `/api/ai-decision` 转发，浏览器不会接触 API Key。没有配置 Secret 或供应商接口失败时，页面会显示调用失败并回退到本地 AI。

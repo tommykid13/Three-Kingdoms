@@ -782,7 +782,6 @@ const AiSettingsPanel = ({
       ...config,
       provider,
       enabled: provider === "local" ? false : config.enabled,
-      apiKey: provider === "local" ? "" : config.apiKey,
       model:
         provider === "local"
           ? config.model
@@ -796,8 +795,11 @@ const AiSettingsPanel = ({
         <div className="ai-settings-heading">
           <div>
             <p className="eyebrow">AI 1.1</p>
-            <h2>外部 AI 决策</h2>
-          </div>
+          <h2>外部 AI 决策</h2>
+          <p className="settings-note">
+            API Key 只从 Cloudflare 环境变量读取，不会进入浏览器。
+          </p>
+        </div>
           <button type="button" onClick={onClose}>
             关闭
           </button>
@@ -848,23 +850,6 @@ const AiSettingsPanel = ({
           </label>
 
           <label>
-            <span>API Key</span>
-            <input
-              value={config.apiKey}
-              disabled={!usesExternalProvider}
-              type="password"
-              autoComplete="off"
-              placeholder="稍后自行填写"
-              onChange={(event) =>
-                onChange({
-                  ...config,
-                  apiKey: event.currentTarget.value,
-                })
-              }
-            />
-          </label>
-
-          <label>
             <span>超时</span>
             <select
               value={config.timeoutMs}
@@ -882,21 +867,6 @@ const AiSettingsPanel = ({
             </select>
           </label>
         </div>
-
-        <label className="settings-toggle">
-          <input
-            type="checkbox"
-            checked={config.saveKey}
-            disabled={!usesExternalProvider}
-            onChange={(event) =>
-              onChange({
-                ...config,
-                saveKey: event.currentTarget.checked,
-              })
-            }
-          />
-          <span>在本机浏览器保存 API Key</span>
-        </label>
 
         <div className="ai-settings-status">
           <strong>状态</strong>
@@ -2205,7 +2175,6 @@ function App() {
     const canUseExternalAi =
       aiConfig.enabled &&
       aiConfig.provider !== "local" &&
-      aiConfig.apiKey.trim().length > 0 &&
       game.turn.phase === "出牌";
 
     if (canUseExternalAi) {
@@ -2298,16 +2267,11 @@ function App() {
       };
     }
 
-    if (
-      aiConfig.enabled &&
-      aiConfig.provider !== "local" &&
-      game.turn.phase === "出牌" &&
-      !aiConfig.apiKey.trim()
-    ) {
-      setAiStatus(`${aiProviderLabels[aiConfig.provider]} 未填写 API Key，使用本地 AI`);
-    } else {
-      setAiStatus(aiProviderLabels[aiConfig.provider]);
-    }
+    setAiStatus(
+      aiConfig.enabled && aiConfig.provider !== "local"
+        ? `${aiProviderLabels[aiConfig.provider]} 服务端代理`
+        : aiProviderLabels[aiConfig.provider],
+    );
 
     const timer = window.setTimeout(() => {
       setGame((current) => (current ? advanceGame(current) : current));
@@ -2449,10 +2413,8 @@ function App() {
         <AiSettingsPanel
           config={aiConfig}
           status={
-            aiConfig.enabled &&
-            aiConfig.provider !== "local" &&
-            !aiConfig.apiKey.trim()
-              ? `${aiProviderLabels[aiConfig.provider]} 等待 API Key`
+            aiConfig.enabled && aiConfig.provider !== "local"
+              ? `${aiProviderLabels[aiConfig.provider]} 服务端代理，失败自动 fallback 本地 AI`
               : aiStatus
           }
           onChange={setAiConfig}

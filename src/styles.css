@@ -299,9 +299,15 @@ button:disabled {
   font-size: 1.25rem;
 }
 
+.settings-note {
+  margin: 6px 0 0;
+  color: #4f5a5e;
+  font-weight: 800;
+}
+
 .settings-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(160px, 1fr));
+  grid-template-columns: minmax(180px, 0.9fr) minmax(240px, 1.2fr) minmax(140px, 0.7fr);
   gap: 10px;
 }
 

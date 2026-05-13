@@ -12,9 +12,7 @@ export type AiProviderId = "local" | "google" | "deepseek" | "glm";
 export type AiProviderConfig = {
   enabled: boolean;
   provider: AiProviderId;
-  apiKey: string;
   model: string;
-  saveKey: boolean;
   timeoutMs: number;
 };
 
@@ -62,9 +60,7 @@ export const defaultAiModels: Record<Exclude<AiProviderId, "local">, string> = {
 export const defaultAiConfig: AiProviderConfig = {
   enabled: false,
   provider: "local",
-  apiKey: "",
   model: defaultAiModels.google,
-  saveKey: false,
   timeoutMs: 12000,
 };
 
@@ -84,9 +80,7 @@ export const loadStoredAiConfig = (): AiProviderConfig => {
     return {
       enabled: Boolean(parsed.enabled),
       provider,
-      apiKey: parsed.saveKey ? String(parsed.apiKey ?? "") : "",
       model: String(parsed.model || providerDefaultModel),
-      saveKey: Boolean(parsed.saveKey),
       timeoutMs:
         typeof parsed.timeoutMs === "number" && parsed.timeoutMs >= 4000
           ? parsed.timeoutMs
@@ -98,11 +92,7 @@ export const loadStoredAiConfig = (): AiProviderConfig => {
 };
 
 export const saveStoredAiConfig = (config: AiProviderConfig) => {
-  const persisted: AiProviderConfig = {
-    ...config,
-    apiKey: config.saveKey ? config.apiKey : "",
-  };
-  window.localStorage.setItem(storedConfigKey, JSON.stringify(persisted));
+  window.localStorage.setItem(storedConfigKey, JSON.stringify(config));
 };
 
 const cardActionId = (
@@ -281,28 +271,6 @@ export const buildAiDecisionPayload = (
   };
 };
 
-const extractJsonObject = (text: string): Record<string, unknown> => {
-  const trimmed = text.trim();
-  try {
-    return JSON.parse(trimmed) as Record<string, unknown>;
-  } catch {
-    const match = trimmed.match(/\{[\s\S]*\}/);
-    if (!match) {
-      throw new Error("模型没有返回 JSON。");
-    }
-    return JSON.parse(match[0]) as Record<string, unknown>;
-  }
-};
-
-const parseDecisionText = (text: string): AiDecisionResult => {
-  const parsed = extractJsonObject(text);
-  return {
-    actionId: String(parsed.actionId ?? ""),
-    reason: typeof parsed.reason === "string" ? parsed.reason : undefined,
-    rawText: text,
-  };
-};
-
 const fetchWithTimeout = async (
   url: string,
   init: RequestInit,
@@ -320,109 +288,6 @@ const fetchWithTimeout = async (
   }
 };
 
-const requestGoogleDecision = async (
-  config: AiProviderConfig,
-  payload: unknown,
-) => {
-  const model = config.model || defaultAiModels.google;
-  const response = await fetchWithTimeout(
-    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
-      model,
-    )}:generateContent?key=${encodeURIComponent(config.apiKey)}`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: [
-              {
-                text: JSON.stringify(payload),
-              },
-            ],
-          },
-        ],
-        generationConfig: {
-          temperature: 0.2,
-          responseMimeType: "application/json",
-        },
-      }),
-    },
-    config.timeoutMs,
-  );
-
-  if (!response.ok) {
-    throw new Error(`Google API ${response.status}`);
-  }
-
-  const data = await response.json();
-  const text = data?.candidates?.[0]?.content?.parts
-    ?.map((part: { text?: string }) => part.text ?? "")
-    .join("")
-    .trim();
-  if (!text) {
-    throw new Error("Google API 没有返回文本。");
-  }
-  return parseDecisionText(text);
-};
-
-const requestOpenAiCompatibleDecision = async (
-  config: AiProviderConfig,
-  payload: unknown,
-) => {
-  const isGlm = config.provider === "glm";
-  const baseUrl = isGlm
-    ? "https://api.z.ai/api/paas/v4/chat/completions"
-    : "https://api.deepseek.com/chat/completions";
-  const model =
-    config.model || (isGlm ? defaultAiModels.glm : defaultAiModels.deepseek);
-
-  const response = await fetchWithTimeout(
-    baseUrl,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${config.apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          {
-            role: "system",
-            content:
-              "你是三国杀AI。必须只从用户给定 legalActions 里选一个 actionId，并只输出 JSON。",
-          },
-          {
-            role: "user",
-            content: JSON.stringify(payload),
-          },
-        ],
-        temperature: 0.2,
-        stream: false,
-        response_format: {
-          type: "json_object",
-        },
-      }),
-    },
-    config.timeoutMs,
-  );
-
-  if (!response.ok) {
-    throw new Error(`${aiProviderLabels[config.provider]} API ${response.status}`);
-  }
-
-  const data = await response.json();
-  const text = String(data?.choices?.[0]?.message?.content ?? "").trim();
-  if (!text) {
-    throw new Error(`${aiProviderLabels[config.provider]} API 没有返回文本。`);
-  }
-  return parseDecisionText(text);
-};
-
 export const requestAiDecision = async (
   config: AiProviderConfig,
   payload: unknown,
@@ -430,15 +295,42 @@ export const requestAiDecision = async (
   if (!config.enabled || config.provider === "local") {
     throw new Error("外部 AI 未启用。");
   }
-  if (!config.apiKey.trim()) {
-    throw new Error("未填写 API Key。");
+
+  const response = await fetchWithTimeout(
+    "/api/ai-decision",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        provider: config.provider,
+        model: config.model,
+        payload,
+      }),
+    },
+    config.timeoutMs,
+  );
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const message =
+      typeof data?.error === "string"
+        ? data.error
+        : `${aiProviderLabels[config.provider]} 服务端代理 ${response.status}`;
+    throw new Error(message);
+  }
+  if (data?.fallback || typeof data?.error === "string") {
+    throw new Error(
+      typeof data?.error === "string"
+        ? data.error
+        : `${aiProviderLabels[config.provider]} 服务端代理请求 fallback。`,
+    );
   }
 
-  if (config.provider === "google") {
-    return requestGoogleDecision(config, payload);
-  }
-  if (config.provider === "deepseek" || config.provider === "glm") {
-    return requestOpenAiCompatibleDecision(config, payload);
-  }
-  throw new Error("未知 AI 供应商。");
+  return {
+    actionId: String(data?.actionId ?? ""),
+    reason: typeof data?.reason === "string" ? data.reason : undefined,
+    rawText: typeof data?.rawText === "string" ? data.rawText : undefined,
+  };
 };
