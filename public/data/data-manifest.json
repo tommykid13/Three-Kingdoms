@@ -1,0 +1,47 @@
+{
+  "generatedAt": "2026-05-13T15:32:11.062Z",
+  "source": {
+    "generals": "Final.json",
+    "cardDefs": "rules/card_defs.json",
+    "deckInstances": "rules/deck_instances.json",
+    "generalImages": "Comic/*.png",
+    "cardImages": "cards/*.png"
+  },
+  "counts": {
+    "sourceGenerals": 55,
+    "selectedGenerals": 42,
+    "excludedGenerals": 13,
+    "sourceGeneralImages": 42,
+    "cardDefs": 43,
+    "deckInstances": 160,
+    "cardImages": 43,
+    "issues": 0
+  },
+  "aliases": {
+    "刘禅": "刘婵",
+    "许褚": "许诸"
+  },
+  "identitySetup": {
+    "mode": "8人经典身份局",
+    "seats": 8,
+    "roles": [
+      {
+        "role": "主公",
+        "count": 1
+      },
+      {
+        "role": "忠臣",
+        "count": 2
+      },
+      {
+        "role": "反贼",
+        "count": 4
+      },
+      {
+        "role": "内奸",
+        "count": 1
+      }
+    ],
+    "playerControl": "玩家控制1人，其余7人为AI"
+  }
+}

@@ -1,0 +1,591 @@
+Original prompt: 我想制作单人三国杀游戏，8人局，游戏卡牌和武将图片我都生成好在这个目录中了，现在你先检查一下项目资料，然后我们一步步讨论怎么制作这个单人游戏三国杀游戏。
+
+# Progress
+
+- Confirmed target: browser single-player Sanguosha, 8-player identity mode, 1 human + 7 AI, classic role setup.
+- Confirmed data scope: use existing general images only. Map 刘禅 to 刘婵.png and 许褚 to 许诸.png. Exclude generals with no image.
+- Created initial Vite + React + TypeScript project skeleton.
+- Added data generation script that normalizes generals, card definitions, deck instances, identity setup, and static asset paths.
+- Added a first data-check screen showing the usable general pool, deck stats, role setup, aliases, excluded generals, and data issue count.
+- Ran data generation: 42 selected generals, 13 excluded generals, 43 card definitions, 160 deck instances, 0 data issues.
+- Installed npm dependencies successfully with 0 vulnerabilities reported.
+- Added reusable `npm run start:dev` launcher for background Vite dev server logs under `.codex`.
+- Switched build type checking to `tsc --noEmit` and removed emitted TypeScript build artifacts from the project root.
+- Adjusted dev launcher to execute npm through the current Node/npm CLI instead of Windows shell wrapping.
+- Verified `npm run build` succeeds with data generation, TypeScript checking, and Vite production build.
+- Started local dev server at `http://127.0.0.1:5173/` using escalated permissions because sandboxed Vite dev failed with esbuild `spawn EPERM`.
+- Verified HTTP access for the app shell, generated selected-generals JSON, a corrected general image path, and a card image path.
+- Attempted Playwright verification, but Chromium download failed with network `ETIMEDOUT`; no browser screenshot verification completed in this turn.
+- Adjusted the first screen palette away from a warm single-tone background; rebuild still passes and Vite HMR picked up the CSS change.
+- Implemented 8-seat table prototype with identity setup, general cards, HP, hand counts, equipment/judge zones, draw/discard piles, player hand, log panel, and phase track.
+- Added initial game setup: shuffle classic roles, assign 8 available generals, deal 4 cards to each seat, start at the lord's turn.
+- Added basic phase progression: prepare, judge, draw 2, play placeholder, discard to hand limit, finish, then next alive seat; AI seats auto-advance unless paused.
+- Captured in-app browser narrow screenshot/DOM and system Edge desktop screenshot. Desktop layout renders correctly; initial console 404 was for missing favicon.
+- Added `public/favicon.svg`, rebuilt, and re-ran browser checks. Console errors/warnings are now empty.
+- Saved desktop verification screenshot at `.codex/screenshots/desktop-board-after-favicon.png`.
+- Verified turn stepping through `window.advanceTime`: a setup at draw pile 128 advanced from 准备 to 出牌 and draw pile became 126.
+- Added first basic-card rule layer: 杀/火杀/雷杀 target selection, 闪 response windows, 桃 recovery/rescue, 酒 next-Sha damage bonus, damage, dying, death cleanup/rewards, and identity victory checks.
+- Added player hand buttons, targetable seat buttons, response panels for 闪 and 濒死救援, and winner display.
+- Added deterministic `?seed=` support for reproducible local test games.
+- Verified `npm run build` after the basic-card implementation.
+- Browser-tested fixed seeds with system Edge:
+  - Player uses 火杀 and target with 闪 auto-responds: hand/discard/shaPlayed update correctly.
+  - Player uses 火杀 on target without 闪: target HP drops from 4 to 3.
+  - Player uses 酒 then 火杀: target HP drops from 4 to 2.
+  - AI attacks player: `shan-response` panel appears; 打出闪 consumes 闪 and prevents damage; 不出闪 lowers player HP.
+  - Natural long-step game reaches victory: 主公死亡 -> 反贼胜利.
+  - Natural long-step game reaches `dying-response`; using 桃 raises dying target from 0 HP to 1 HP and clears pending action.
+- Saved updated UI screenshot at `.codex/screenshots/basic-cards-ui.png`; browser console checks were empty.
+- Verified `npm run build` after manual discard and equipment/range work.
+- Standard web-game client was attempted but cannot launch because bundled Playwright Chromium is not installed; continued with system Edge at `C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe`.
+- Edge automation passed with empty browser console errors:
+  - Seed `20260202`: equipping Zhuque Feather Fan changes attack range 1 -> 4 and Sha targets 2 -> 7.
+  - Seed `20260279`: equipping Dayuan uses the offensive mount slot, player-to-seat distances adjust from 1/2/3/4/3/2/1 to 1/1/2/3/2/1/1, and range-1 Sha targets 2 -> 4.
+  - Seed `20260262`: equipping Jueying uses the defensive mount slot.
+  - Seed `20260202`: manual discard creates `discard_cards` pending action, requires 3 discards at 6 hand / 3 HP, enables confirm only after selecting 3 cards, then resolves to end phase with 3 hand and discard pile +3.
+- Saved verification screenshots under `.codex/screenshots/verification-20260429/`.
+- Re-prioritized after user feedback: fixed player-facing table experience before armor/trick/skill work.
+- Added pre-game setup screen: player now chooses identity role and one of the 42 available generals before starting.
+- Changed new games to start with AI auto-advance paused, so the table no longer runs itself before the player is ready.
+- Moved the large round/phase/pile panel out of the center of the table into a top control bar; the table center is clear in screenshots.
+- Changed player hand cards from text-only buttons to image cards using the existing card art.
+- Added a latest-card effect banner that shows a card image and the latest play/response message after using cards or equipment.
+- Verified `npm run build` passes after these priority UI/game-flow fixes.
+- Edge automation passed with empty console errors:
+  - Setup screen renders 42 generals and role choice buttons.
+  - Starting the game keeps AI paused and makes seat 0 the selected human role/general.
+  - Turn control bar is above the table surface and does not cover the playfield center.
+  - Player hand renders card images.
+  - Playing Sha produces an effect banner with card art; when the target responds with Shan, the banner updates to the response.
+- Saved screenshots under `.codex/screenshots/priority-fixes-20260429/`.
+- Adjusted setup to match Sanguosha flow: player identity is now randomly assigned and cannot be manually selected.
+- Setup now randomly samples 5 generals from the 42 available generals for the player to choose from.
+- Added setup reroll button to re-randomize identity and the 5 general candidates before starting.
+- Added table action presentation layer:
+  - flying card image from source seat toward target seat,
+  - dashed target line between seats,
+  - floating impact text such as `闪`, `-1`, `+1`, or `+杀`.
+- Extended `lastEffect` with source/target seat ids, sequence, and impact text so UI animations can remount per action.
+- Verified `npm run build` passes after random-role/five-general setup and action animation changes.
+- Edge automation passed with empty console errors:
+  - Setup renders exactly 5 general choices and one assigned-role card.
+  - Starting the game keeps AI paused and maps seat 0 to the human player.
+  - Playing Sha triggers action overlay and effect banner; target Shan response updates the effect.
+- Saved screenshots under `.codex/screenshots/random-role-animation-20260429/`.
+- Changed turn flow to feel closer to real Sanguosha:
+  - new games start with AI auto-run enabled,
+  - human prepare/judge/draw phases auto-advance to play,
+  - the player only presses the lower hand-area `结束出牌` button when done,
+  - manual discard still opens the discard selection response panel when over hand limit.
+- Moved the phase-advance control out of the top control bar; the only player turn button is now below the hand cards.
+- Added visible per-seat equipment zone, judgment zone, and skill chips. Empty equipment/judge zones show `空`; equipment cards use small card-art chips when present.
+- Added a player skill panel with clickable skill entries that currently log “hook pending” state until real skill handlers are implemented.
+- Tightened seat-panel layout after screenshot review; initial expanded zones caused left/right overlap, compact zone rows now pass an overlap check.
+- Verified `npm run build` passes after these turn-flow and seat-zone UI changes.
+- Standard web-game Playwright client was attempted again and still cannot launch due missing bundled Chromium; fallback system Edge verification passed with empty console errors:
+  - Seed `20260432`: player as lord auto-advances through prepare/judge/draw into play with 6 hand cards.
+  - Lower `结束出牌` button is enabled in play phase and opens manual discard when over hand limit.
+  - Seat panels expose 16 zone rows across 8 seats and no seat-panel overlap at 1800x1200.
+  - Equipping `仁王盾` moves it to the player equipment zone and updates the effect banner with card art.
+- Saved screenshots/checks under `output/edge-human-turn-ui-compact/` and `output/edge-equipment-display/`.
+- Added general portrait zoom:
+  - clicking any seat portrait or the player portrait opens a modal with larger art and skill text.
+- Changed HP rendering to bold red heart pips on seats and player summary.
+- Increased seat stat weight/size for hand count, range, distance, and judge count.
+- Added custom hover tooltips for skill chips/buttons using generated skill descriptions.
+- Made filled equipment zones and filled judgment zones visually highlighted.
+- Implemented ordinary trick card resolution for a playable first pass:
+  - `无中生有`, `桃园结义`, `五谷丰登`, `万箭齐发`, `南蛮入侵`, `铁索连环` as instant effects,
+  - `决斗`, `过河拆桥`, `顺手牵羊`, `火攻`, `借刀杀人` as targeted effects,
+  - `无懈可击` remains response-only and is not actively playable yet.
+- Implemented delayed trick flow:
+  - `闪电` enters self judgment area, judges spade 2-9 for 3 thunder damage, otherwise passes to next alive seat.
+  - `兵粮寸断` enters target judgment area, non-club judgment skips draw.
+  - `乐不思蜀` enters target judgment area, non-heart judgment skips play.
+- Added turn skip flags for draw/play and included judgeArea details in `render_game_to_text`.
+- Started the general skill hook layer with first passive hooks:
+  - `咆哮` allows unlimited Sha like Zhuge Crossbow,
+  - `英姿` draws +1 during draw phase,
+  - `马术` reduces outgoing distance by 1,
+  - `飞影` increases incoming distance by 1.
+- Standard web-game client still fails because bundled Chromium is missing; system Edge verification passed with empty console errors:
+  - portrait modal opens,
+  - skill hover tooltip targets exist,
+  - final seat overlap check at 1800x1200 returns no hits,
+  - `无中生有` draws cards and updates the effect banner,
+  - `闪电` enters player judgment area,
+  - `兵粮寸断` enters a target judgment area and later causes the target to skip draw after judgment.
+- Saved screenshots/checks under `output/edge-final-ui-tricks/`, `output/edge-delay-debug/`, and `output/edge-delay-judge/`.
+
+# Next
+
+- Latest update:
+  - Added chainable `无懈可击` resolution for targeted tricks, delayed trick effects, and mass-trick per-target effects.
+  - Each `无懈可击` now flips whether the original trick is nullified, so chains like player `无懈` -> AI `反无懈` -> ally `再无懈` can resolve correctly.
+  - AI can now proactively use `无懈可击` by role strategy:
+    - protect same-side targets from harmful trick effects,
+    - counter a nullification when the original harmful effect is aimed at an enemy.
+  - Player `无懈可击` prompts now include whether the original trick is currently live or already nullified.
+  - Added `log` to `render_game_to_text` for browser verification of multi-step response chains.
+  - Verified `npm run build` passes: 42 selected generals, 160 deck instances, 0 data issues.
+  - Standard web-game Playwright client was attempted and still cannot launch because bundled Chromium is missing; system Edge fallback verification passed with empty console errors.
+  - Edge verification artifacts saved under `output/edge-wuxie-chain-ai/`:
+    - seed `73`: AI 张角 uses `无懈可击` to protect allied 华佗 from `过河拆桥`.
+    - seed `2476`: player is prompted for `无懈可击` against `过河拆桥`; after player uses it, AI 袁绍 counters with `无懈可击`, and another AI can continue the chain.
+
+- Latest update:
+  - Enlarged the main wide-screen layout cap to 1840px while preserving 100% width on smaller screens.
+  - Added a colored player identity badge beside the player general title in the lower-left player summary.
+  - Added real response windows for mass trick basic-card responses: `万箭齐发` asks for `闪`, `南蛮入侵` asks for `杀`, with optional `无懈可击` if available.
+  - Added a `无懈可击` response window for targeted tricks and delayed judgment effects on the human player.
+  - Localized the new response panel eyebrow labels to Chinese.
+  - Verified `npm run build` passes: 42 selected generals, 160 deck instances, 0 data issues.
+  - Standard web-game Playwright client still cannot launch because its bundled Chromium is missing; system Edge fallback verification passed with empty console errors.
+  - Edge verification artifacts saved under `output/edge-response-latest-final/`:
+    - seed `11`: table/header/player console width measured at 1840px on a 2048px viewport; player role badge shows beside the name; `万箭齐发` opens the basic-card response panel and pass clears pending.
+    - seed `402`: AI targets the player with `决斗`; player `无懈可击` response panel opens; using `无懈可击` clears pending and records the nullify effect.
+
+- Latest update:
+  - Finished a trick-card completeness sweep for the current rules layer.
+  - Added explicit pending actions and UI panels for:
+    - `决斗` manual `杀` response,
+    - `火攻` reveal + same-suit discard choice,
+    - `借刀杀人` weapon-owner `杀` response or weapon transfer,
+    - `五谷丰登` revealed-card selection.
+  - Added `无懈可击` windows for `无中生有`, `桃园结义`, `五谷丰登`, and `铁索连环` target effects.
+  - Implemented `铁索连环` chained state display and elemental damage transmission for fire/thunder damage.
+  - Verified `npm run build` passes.
+  - Standard web-game Playwright client still cannot launch because bundled Chromium is missing; system Edge fallback passed with empty console errors.
+  - Edge verification artifacts saved under `output/wuxie-sweep-edge/`:
+    - `board.png`: full board screenshot after booting seed `2476`.
+    - `rule-smoke.json`: browser-module rule smoke with passing checks for `无中生有`, `五谷丰登`, `决斗`, `火攻 + 铁索传导`, `借刀杀人`, and `铁索连环`.
+
+- Latest update:
+  - Added manual second-target selection for `借刀杀人`.
+    - Player now selects the weapon owner first, then selects the victim inside that weapon owner's attack range.
+    - Rule execution preserves the chosen second target through the `无懈可击` window.
+    - Calling `借刀杀人` without a second target now refuses to consume the card.
+  - Added the `铁索连环` target choice UI:
+    - click 1-2 targets, then confirm to toggle chained state,
+    - or click `重铸摸牌` to discard and draw 1.
+  - Added selected-target highlighting and a compact action hint row for multi-target/recast controls.
+  - Verified `npm run build` passes.
+  - System Edge verification passed with empty console errors.
+  - Edge verification artifacts saved under `output/multitarget-sweep-edge/`:
+    - `rule-smoke.json`: `借刀杀人` requires and preserves second target; `铁索连环` two-target toggle and recast pass.
+    - `ui-smoke.json`: real UI flow for selecting two `铁索连环` targets and the recast button pass.
+    - `ui-tiesuo-confirm.png` and `ui-tiesuo-recast.png`: screenshots after both UI paths.
+
+- Add armor active effects beyond occupying the armor slot.
+- Continue converting selected 42 general skills into hook-based skill handlers; UI display/entry exists, and first passive hooks are active.
+- Add richer response windows for `万箭齐发` / `南蛮入侵` / `无懈可击`; current first pass auto-resolves responses.
+- Polish dense table/hand layout if later screenshots show target buttons or extra hand cards feeling cramped.
+
+- Latest update:
+  - Confirmed the current card data has 15 trick-card definitions and all 15 have animation class mappings:
+    `桃园结义`, `万箭齐发`, `五谷丰登`, `决斗`, `过河拆桥`, `顺手牵羊`, `无中生有`, `无懈可击`, `南蛮入侵`, `借刀杀人`, `火攻`, `铁索连环`, `乐不思蜀`, `闪电`, `兵粮寸断`.
+  - Added `cardId` to the last-effect payload so the UI can choose the correct animation from the actually used card rather than only the text label.
+  - Added a trick animation mapping layer in `src/game/trickAnimations.ts`.
+  - Added a shared table trick-effect stage with aura, expanding rings, burst particles, streaks, flying card, impact text, and per-card colors/symbol shapes.
+  - Added distinct CSS effect families inspired by the classic Sanguosha feel:
+    - `无懈可击`: shield/cross counter effect,
+    - `铁索连环`: chain-ring and link effect,
+    - `万箭齐发`: arrow-volley streaks,
+    - `火攻`: flame columns,
+    - `闪电`: lightning bolt,
+    - `决斗`/`借刀杀人`: weapon clash,
+    - delayed tricks and utility tricks get their own color/symbol treatment.
+  - Verified `npm run build` passes: 42 selected generals, 160 deck instances, 0 data issues.
+  - Standard web-game client still cannot launch because bundled Chromium is missing; system Edge fallback verification passed with empty console errors.
+  - Edge verification artifacts saved under `output/trick-animation-edge/`:
+    - `animation-smoke.json`: confirms real overlays for `无懈可击` and `铁索连环` include trick stage/aura/target line and no console errors.
+    - `wuxie-counter-effect.png`: AI uses `无懈可击` to counter `无中生有`, showing counter animation.
+    - `tiesuo-effect.png`: player uses `铁索连环` with 2 selected targets, showing target line and chain animation.
+
+- Latest update:
+  - Changed the default dev server port to `127.0.0.1:7001`.
+    - `package.json` now runs Vite with `--host 127.0.0.1 --port 7001 --strictPort`.
+    - `scripts/start-dev-server.mjs` now delegates to the `dev` script directly.
+  - Moved selected-card confirm controls out of the table center and into the player hand action row beside `结束出牌`.
+    - `铁索连环` now shows `确认连环`, `重铸摸牌`, and `取消` beside the end-turn button after selection.
+    - The old center target hint is removed so selecting a card no longer pushes the table layout down.
+  - Added selected hand-card lift animation:
+    - selected/hovered hand cards translate upward by 10px,
+    - works for normal targeting and discard selection because both use the same `is-selected` state.
+  - Added judge-card image markers on the seat panel:
+    - `乐不思蜀` shows a small card-image badge with `乐`,
+    - `兵粮寸断` shows `兵`,
+    - `闪电` shows `雷`.
+  - Reworked dying resolution into ordered all-player peach requests:
+    - dying state now tracks `checkedSeatIds`,
+    - requests proceed from current active seat around the alive-seat order,
+    - AI logs whether it responds and can auto-use valid rescue cards by side/self-save policy,
+    - player still receives the existing response window when their turn to answer arrives.
+  - Verified `npm run build` passes.
+  - Started the dev server successfully at `http://127.0.0.1:7001/`.
+  - Standard web-game client still cannot launch because bundled Chromium is missing; system Edge fallback passed with empty console errors.
+  - Edge verification artifacts saved under `output/ui-flow-7001/`:
+    - `ui-smoke.json`: confirms 10px selected-card lift, selected-card actions next to end-turn, no center target hint, judge marker with image, and all-player dying request smoke where AI uses `桃` to rescue.
+    - `selected-actions-tiesuo.png`: screenshot of `铁索连环` selected with the confirm/recast/cancel row beside `结束出牌`.
+    - `judge-marker-lebu.png`: screenshot showing `乐不思蜀` marker on the target general.
+
+- Latest update:
+  - Reworked the main play layout for a single-screen desktop view.
+    - Reduced the table surface from a fixed 920px height to viewport-based `clamp(520px, calc(100vh - 400px), 700px)`.
+    - Tightened top/table/player-console gaps and compacted the bottom player summary facts into 3 columns.
+    - Hid empty equipment/judgment rows on seat panels; equipment and judgment rows still appear when cards exist.
+  - Enlarged and de-cropped general card images on seats:
+    - seat portraits now use a 96px x 134px card-ratio slot,
+    - images use `object-fit: contain`, so the full generated general card is visible.
+  - Added lord presentation:
+    - the lord seat gets a gold frame and glow,
+    - a large gold `主公` ribbon is shown on the lord card,
+    - the player role badge uses a gold treatment when the player is lord.
+  - Verified `npm run build` passes.
+  - Standard web-game client still cannot launch because bundled Chromium is missing; system Edge fallback passed with empty console errors.
+  - Edge verification artifacts saved under `output/layout-lord-portraits/`:
+    - `layout-smoke.json`: at 2048x1280, page fits within viewport, all 8 seats are visible, no seat overlaps, lord ribbon exists, portrait slot is 96x134 and uses contain.
+    - `layout-2048x1280.png`: screenshot showing the full play interface, all seats, enlarged full-card portraits, and gold lord marking.
+    - `layout-1440x900.png`: smaller viewport reference; seats remain visible, but dense side-seat overlap can still happen at this height and should be handled with a separate compact-seat mode if needed.
+
+- Latest update:
+  - Removed the old top table-center strip from the play screen:
+    - phase buttons, pile counters, and the last-effect banner no longer occupy the area between the title and table.
+  - Moved the AI pause and restart controls to a fixed top-right toolbar.
+    - `重新选将` is now renamed to `重新开始`.
+  - Rebalanced the table layout to avoid right-side seat overlap:
+    - table height now uses `clamp(620px, calc(100vh - 280px), 800px)`,
+    - side seats are spaced into clearer top/middle/bottom lanes,
+    - the player console starts higher so the hand/log area is visible sooner on 1440x900.
+  - Enlarged general card images again:
+    - seat portraits now use roughly 112-132px wide by 156-174px tall slots on desktop,
+    - player summary portrait is now 124x166.
+  - Verified `npm run build` passes.
+  - System Edge fallback verification passed with empty console errors.
+  - Edge verification artifacts saved under `output/layout-top-controls-portraits-v2/`:
+    - `layout-results.json`: confirms no seat overlaps at 2048x768, 2048x1280, and 1440x900; `table-center` count is 0; restart text is `重新开始`.
+    - `wide-short-2048x768.png`: short-wide viewport with all 8 seats visible and no right-side stacking.
+    - `desktop-1440x900.png`: desktop viewport with all 8 seats visible and the player console beginning in the first viewport.
+
+- Latest update:
+  - Added the next large batch of general skill hooks and first-pass active skill execution.
+  - Newly connected automatic/passive/response skills:
+    - `奸雄`: damaged Cao Cao gains the damage card from discard.
+    - `无双`: Sha requires two Shan; Duel responses against Lu Bu require two Sha.
+    - `雷击`: Zhang Jiao triggers thunder judgment after using/playing Shan.
+    - `若愚`: Liu Shan lord awakening at prepare phase, max HP +1, heals 1, gains `激将`.
+    - `连营`: Lu Xun draws after losing his last hand card.
+    - `奇袭`: Gan Ning can use black cards as `过河拆桥`.
+    - `国色`: Da Qiao can use diamond cards as `乐不思蜀`.
+    - `连环`: Pang Tong can use/recast club cards as `铁索连环`.
+    - `流离`: Da Qiao can auto-discard to redirect Sha to a valid target.
+    - `天香`: Xiao Qiao can auto-discard heart cards to redirect damage, then target draws by lost HP.
+    - `悲歌`: Cai Wenji can auto-discard after allied Sha damage and apply the judge result.
+    - `涅槃`: Pang Tong auto-uses the limited revive on dying.
+    - `不屈`: Zhou Tai creates unique-rank wound marks to avoid death.
+  - Newly connected active skill buttons / AI-use heuristics:
+    - `仁德`, `制衡`, `苦肉`, `反间`, `青囊`, `强袭`, `乱击`, `离间`, `结姻`.
+    - Current first pass auto-selects cards/targets by role heuristic; later UI work can replace this with manual multi-step selection.
+  - Added `turn.usedSkills`, `seat.awakenedSkills`, and `seat.buquMarks` state.
+  - Fixed a React StrictMode dev-only bug by deep-cloning `turn.usedSkills`; active skill clicks no longer look like duplicate uses.
+  - Moved the top-right pause/restart controls back into the title header flow so they no longer overlap the right-side seat panels at 1440px.
+  - Verified `npm run build` passes: 42 selected generals, 160 deck instances, 0 data issues.
+  - Standard `develop-web-game` Playwright client was attempted and still cannot launch because bundled Chromium is missing.
+  - System Edge fallback verification passed with empty console errors.
+  - Rule smoke artifacts saved under `output/skill-batch2/`:
+    - `skill-batch2-source.ts`
+    - `skill-batch2-smoke.mjs`
+    - `skill-batch2-results.json`
+    - Covered `无双`, `奸雄`, `雷击`, `若愚`, `连营`, `奇袭`, `国色`, `连环`, `天香`, `流离`, `涅槃`, `不屈`, `制衡`, and `苦肉`.
+  - UI verification artifacts saved under `output/skill-batch2-ui/`:
+    - `sunquan-zhiheng-ui.json`: confirms `制衡 已接入`, click triggers `发动【制衡】`, no console errors, no toolbar-seat overlap.
+    - `sunquan-zhiheng-ui.png`: inspected screenshot after using `制衡`.
+
+- Latest update:
+  - Converted player-side active skills `仁德`, `反间`, `离间`, `驱虎`, and `巧变` from auto-resolution to manual UI selection.
+    - Player flow is now: click skill -> select required hand card(s) -> select required target(s) -> confirm beside `结束出牌`.
+    - `仁德` supports selecting multiple hand cards and one recipient.
+    - `反间` supports selected hand card + selected target; AI target still auto-declares red heart for this rules pass.
+    - `离间` supports selected cost card + two manually chosen duel targets.
+    - `驱虎` supports selected pindian card, first target with higher HP, then a second target in that first target's attack range.
+    - `巧变` supports selected cost card + one target with cards, then gains the first available target zone card in the current first-pass implementation.
+  - Added `activateSkillWithSelection` in `src/game/turn.ts` and kept the older auto active-skill functions for AI turns.
+  - Added first-pass AI auto-use for `驱虎` and `巧变`.
+  - Added selected-skill UI state, skill button `选择中` styling, hand-card labels for skill use, and selected-skill action row beside end-turn controls.
+  - Verified `npm run build` passes.
+  - Added and ran rule smoke tests under `output/manual-skill-selection/`:
+    - `manual-skill-results.json` confirms all five manual skills consume/use exactly selected cards and selected targets.
+  - Standard `develop-web-game` Playwright client was attempted and still cannot launch because bundled Chromium is missing.
+  - System Edge fallback UI verification passed with empty console errors:
+    - `ui-smoke.json` covers manual UI flows for all five skills.
+    - Screenshots saved as `ui-仁德.png`, `ui-反间.png`, `ui-离间.png`, `ui-驱虎.png`, and `ui-巧变.png`.
+
+- Latest update:
+  - Refined Zhang He `巧变` into the original phase-skip structure instead of the previous play-stage active shortcut.
+    - At the human player's `摸牌` phase, `巧变` now asks before drawing; if the player discards a hand card to skip draw, a follow-up UI lets them choose up to two other characters and gain one hand card from each.
+    - At the human player's `出牌` phase, `巧变` now asks before normal play; if the player discards a hand card to skip play, a follow-up UI lets them pick a source character, choose one equipment/judgment card on that character, then choose a valid destination.
+    - At the human player's `弃牌` phase, `巧变` now asks before normal discard; using it skips the discard phase even if over hand limit, while passing falls back to normal manual discard.
+  - Removed the old AI/manual active-use `巧变` shortcut so the new rule path is not mixed with the older "gain a zone card" first pass.
+  - Updated the player skill click message for `巧变`: it now explains that the skill is automatically asked during draw/play/discard phases.
+  - Added compact styling for the `巧变` field-card picker inside the player action row.
+  - Verified `npm run build` passes.
+  - Added rule smoke artifacts under `output/qiaobian-phase/`:
+    - `qiaobian-phase-source.ts`
+    - `qiaobian-phase-smoke.mjs`
+    - `qiaobian-phase-results.json`
+    - Covered draw-skip hand gain from up to two targets, play-skip equipment move, play-skip delayed-trick move, discard-skip, and discard-pass fallback.
+  - Standard `develop-web-game` Playwright client was attempted and still cannot launch because bundled Chromium is missing.
+  - System Edge fallback UI verification passed with empty console errors:
+    - seed `54`, player chooses `张郃` as lord.
+    - `ui-smoke.json` confirms draw-phase `巧变` prompt, two-target draw-skip UI, play-phase `巧变` prompt, pass-to-normal-play, and the skill tooltip/log message.
+    - Screenshots saved as `ui-draw-prompt.png`, `ui-play-prompt.png`, and `ui-final-play.png`.
+
+- Latest update:
+  - Continued the remaining selected-general skill implementation sweep.
+  - Added or completed hooks for:
+    - `护驾`: 曹操主公可由其他魏势力角色替他打出【闪】，并联动响应路径。
+    - `激将`: 刘备主公可由其他蜀势力角色替他打出【杀】，覆盖决斗与群体锦囊响应。
+    - `鬼才` / `鬼道`: 任意判定前会按阵营策略替换判定牌；`鬼道`限制为黑色牌，已接入乐不思蜀、兵粮寸断、闪电、刚烈、悲歌、铁骑、洛神、雷击、双雄等判定。
+    - `神速`: 支持 AI 跳判定+摸牌视为无距离【杀】，以及主动弃装备视为无距离【杀】并跳过出牌阶段。
+    - `黄天`: 其他群势力角色可以把【闪】或【闪电】交给拥有【黄天】的主公；玩家若满足授权条件，会在技能区显示可用的 `黄天` 按钮。
+    - `天义`: 太史慈拼点，胜利后本回合【杀】无距离限制且不限次数，失败后本回合不能使用【杀】。
+    - `双雄`: 颜良文丑摸牌阶段判定并获得判定牌，本回合可将异色手牌当【决斗】使用。
+    - `放权`: 刘禅跳过出牌，结束阶段弃一张手牌令友方获得额外回合；额外回合结束后回到原本回合顺序。
+  - Added turn-state fields for `天义`, `双雄`, `放权` and extra-turn return bookkeeping, and exposed them in `render_game_to_text`.
+  - `src/App.tsx` now marks all 66 selected-general skills as connected; the only extra listed implementation marker is prior passive `飞影`, currently not present in selected 42.
+  - Verified `npm run build` passes: 42 selected generals, 160 deck instances, 0 data issues.
+  - Added and ran rule smoke tests under `output/skill-batch3/`:
+    - `skill-batch3-source.ts`
+    - `skill-batch3-smoke.mjs`
+    - `skill-batch3-results.json`
+    - Covered `护驾`, `激将`, `鬼才`, `鬼道`, `神速`一/二, `黄天`, `天义`, `双雄`, and `放权`.
+  - Standard `develop-web-game` Playwright client was attempted and still cannot launch because bundled Chromium is missing at `C:\Users\Tommy Deng\AppData\Local\ms-playwright\chromium_headless_shell-1217\chrome-headless-shell-win64\chrome-headless-shell.exe`.
+  - System Edge fallback UI verification passed with empty console errors:
+    - seed `54`: 太史慈主公开局，验证 `天义`按钮、拼点发动、动画/日志与 `turnFlags.tianyiState`.
+    - seed `21`: 玩家选择庞德，AI 主公为张角，验证玩家技能区出现授权 `黄天`按钮。
+    - Screenshots saved as `ui-taishi-play.png`, `ui-taishi-tianyi.png`, and `ui-granted-huangtian.png`.
+
+- Latest update:
+  - Continued player-side skill implementation, converting more previously auto-resolved active skills into manual choice flows:
+    - `天义`: player chooses the pindian hand card and the target with hand cards.
+    - `黄天`: authorized 群 player chooses the exact 【闪】/【闪电】 to give the lord.
+    - `神速`: player chooses the no-distance Sha target for the equipment-discard branch.
+    - `放权`: player chooses both the extra-turn target and the hand card to discard at end phase.
+  - Added `fangquanCostCardId` turn state so the end-phase 放权 discard uses the player-selected card when it is still available.
+  - Exported `getShensuTargetIds` for UI target highlighting.
+  - Updated hand-card enable/disable rules so `黄天` only accepts 【闪】/【闪电】 and `神速` does not ask for a hand card.
+  - Verified `npm run build` passes.
+  - Added and ran rule smoke tests under `output/manual-skill-batch4/`:
+    - `manual-skill-batch4-source.ts`
+    - `manual-skill-batch4-smoke.mjs`
+    - `manual-skill-batch4-results.json`
+    - Covered manual `天义`, `黄天`, `神速`, and `放权`.
+  - Standard `develop-web-game` Playwright client was attempted and still cannot launch because bundled Chromium is missing.
+  - Restarted the dev server on `http://127.0.0.1:7001/` via hidden `npm run dev` because it was no longer running.
+  - System Edge fallback UI verification passed with empty console errors:
+    - `ui-tianyi-selected.png`: verifies selected hand card, highlighted target, and confirm row beside end-turn button.
+    - `ui-tianyi-resolved.png`: verifies `天义` resolves and logs.
+    - `ui-huangtian-authorized.png`: verifies an authorized 群 player sees `黄天` as a manual skill.
+
+- Latest update:
+  - Started converting automatic trigger skills into player choice windows.
+  - Added manual pending flows for:
+    - `流离`: when the human player is targeted by【杀】, the game now pauses for selecting one hand card to discard and one legal redirect target.
+    - `天香`: when the human player with an effective red-heart card would take damage, the game now pauses for selecting the cost card and the damage-transfer target.
+    - `悲歌`: when an allied character takes【杀】damage, a human 蔡文姬 now chooses whether to discard a hand card for the judgment before damage-after hooks continue.
+  - Added `liuli_response`, `tianxiang_response`, and `beige_response` pending action types and clone handling.
+  - Split Sha and damage continuation logic so passing a trigger resumes the original branch instead of re-entering the prompt.
+  - Added response panels and hand-card selection labels in `src/App.tsx`; selected trigger cards reuse the existing card lift animation and target highlighting.
+  - Verified `npm run build` passes.
+  - Added and ran rule smoke tests under `output/manual-trigger-batch5/`:
+    - `manual-trigger-smoke.ts`
+    - `manual-trigger-smoke.mjs`
+    - Covered manual `流离`, `天香`, and `悲歌`.
+  - Standard `develop-web-game` Playwright client was attempted and still cannot launch because bundled Chromium is missing at `C:\Users\Tommy Deng\AppData\Local\ms-playwright\chromium_headless_shell-1217\chrome-headless-shell-win64\chrome-headless-shell.exe`.
+  - System Edge fallback UI verification passed with empty console errors:
+    - seed `64`: player selects `大乔`, verifies `流离` prompt, cost-card selection, target highlight, and enabled confirm button.
+    - seed `17`: player selects `小乔`, verifies `天香` prompt, red-heart cost selection, target highlight, and enabled confirm button.
+    - seed `27`: player selects `蔡文姬`, verifies `悲歌` prompt, cost-card selection, and enabled confirm button.
+    - Screenshots saved as `ui-liuli-selected.png`, `ui-tianxiang-selected.png`, and `ui-beige-selected.png`.
+
+- Latest update:
+  - Continued converting automatic trigger skills into player choice windows.
+  - Added manual pending flows and UI panels for:
+    - `反馈`: human 司马懿 can choose the exact hand/equipment/judge-area option from the damage source.
+    - `遗计`: human 郭嘉 chooses the recipient for the drawn cards.
+    - `节命`: human 荀彧 chooses the character to draw up to max HP.
+    - `奸雄`: human 曹操 chooses whether to gain the damage card.
+    - `刚烈`: human 夏侯惇 chooses whether to judge and counter the damage source.
+    - `枭姬`: human 孙尚香 chooses whether to draw 2 after losing equipment.
+    - `雷击`: human 张角 chooses whether to trigger after playing 【闪】 and selects the judgment target.
+  - Added `leiji_response` resume handling so 雷击 can return to the original 【杀】/群体锦囊 response flow after the prompt resolves.
+  - Verified `npm run build` passes.
+  - Added and ran rule smoke tests under `output/manual-trigger-batch6/`:
+    - `damage-trigger-smoke.ts`
+    - `damage-trigger-smoke.mjs`
+    - `damage-trigger-results.json`
+    - Covered manual `反馈`, `遗计`, `节命`, `奸雄`, `刚烈`, `枭姬`, and `雷击`.
+  - Standard `develop-web-game` Playwright client was attempted and still cannot launch because bundled Chromium is missing at `C:\Users\Tommy Deng\AppData\Local\ms-playwright\chromium_headless_shell-1217\chrome-headless-shell-win64\chrome-headless-shell.exe`.
+  - Restarted the dev server on `http://127.0.0.1:7001/`.
+  - System Edge fallback UI load verification passed with empty console errors:
+    - setup screen renders, start-game works, game board renders with 8 seats.
+    - Screenshots saved as `ui-setup.png` and `ui-game-board.png`.
+
+- Latest update:
+  - Continued sweeping remaining auto-resolved trigger skills and converted another phase-trigger batch into player choice windows:
+    - `双雄`: human 颜良文丑 is asked during draw phase; confirming replaces the draw with a judgment and records the color, passing continues to normal draw flow.
+    - `突袭`: human 张辽 chooses 1-2 characters with hand cards and gains one hand card from each.
+    - `裸衣`: human 许褚 chooses whether to draw one fewer card and enable the turn damage bonus.
+    - `克己`: human 吕蒙 is asked at discard phase when no Sha was played; confirming skips discard.
+    - `闭月`: human 貂蝉 chooses whether to draw 1 at end phase.
+    - `据守`: human 曹仁 chooses whether to draw 3 at end phase.
+  - Fixed an important phase-flow bug: if draw phase creates a pending action, `advanceGame` now stops immediately instead of continuing to advance the phase under the pending prompt.
+  - Added pending action types and UI panels for draw-skill, `突袭`, `克己`, and end-skill prompts.
+  - Verified `npm run build` passes.
+  - Added and ran rule smoke tests under `output/manual-trigger-batch7/`:
+    - `phase-trigger-smoke.ts`
+    - `phase-trigger-smoke.mjs`
+    - `phase-trigger-results.json`
+    - Covered `双雄` use/pass, `突袭`, `裸衣`, `克己`, `闭月`, and `据守`.
+  - Standard `develop-web-game` Playwright client was attempted and still cannot launch because bundled Chromium is missing at `C:\Users\Tommy Deng\AppData\Local\ms-playwright\chromium_headless_shell-1217\chrome-headless-shell-win64\chrome-headless-shell.exe`.
+  - System Edge fallback UI load verification passed with empty console errors:
+    - setup screen renders, start-game works, game board renders with 8 seats.
+    - Screenshots saved as `ui-setup.png` and `ui-game-board.png`.
+
+- Latest update:
+  - Continued the trigger-skill sweep while keeping `集智` and `连营` as default automatic triggers per user direction.
+  - Converted prepare-phase decision skills into player windows:
+    - `观星`: human 诸葛亮 now pauses in 准备阶段, shows the viewed top cards, lets the player click cards to define the new deck-top order, and places unselected cards on the deck bottom.
+    - `洛神`: human 甄姬 now chooses whether to start 洛神, then after every black judgment chooses whether to continue; black cards enter hand, red cards end the loop and go to discard.
+  - Added `guanxing_response` and `luoshen_response` pending action types and clone handling.
+  - Refactored prepare-phase flow so `观星 -> 若愚 -> 洛神` can pause and resume safely, then advance into 判定阶段.
+  - Verified `npm run build` passes.
+  - Added and ran rule smoke tests under `output/manual-trigger-batch8/`:
+    - `prepare-trigger-smoke.ts`
+    - `prepare-trigger-smoke.mjs`
+    - `prepare-trigger-results.json`
+    - Covered `观星` top/bottom ordering, `洛神` black-continue/red-stop, and `洛神` pass.
+  - Standard `develop-web-game` Playwright client was attempted and still cannot launch because bundled Chromium is missing at `C:\Users\Tommy Deng\AppData\Local\ms-playwright\chromium_headless_shell-1217\chrome-headless-shell-win64\chrome-headless-shell.exe`.
+  - System Edge fallback UI load verification passed with empty console errors:
+    - setup screen renders, start-game works, game board renders with 8 seats.
+    - Screenshot inspected: `ui-game-board.png`.
+
+- Latest update:
+  - Paused the next skill batch to fix the requested bug/feedback pass:
+    - `五谷丰登` now writes an explicit completion event after all eligible seats have resolved their picks; rule smoke confirms all 8 seats receive one revealed card before pending clears.
+    - `ActionEffect` now carries `effectKind` so UI can distinguish normal card movement, target designation, and damage.
+    - `杀` target designation now emits a target event before response windows; actual damage emits a separate damage event with `-N` impact text.
+    - Mass-response tricks now emit per-target target events before each target responds.
+    - Seat panels now support a blue pulsing `is-needs-action` state for non-`无懈可击` pending choices and center pulse badges for `目标` / damage.
+  - Verified `npm run build` passes.
+  - Added and ran rule smoke tests under `output/bugfix-wugu-effects/`:
+    - `rule-smoke.ts`
+    - `rule-smoke.mjs`
+    - `rule-smoke-results.json`
+    - Covered `五谷丰登` full distribution/completion log and `杀` target-event then damage-event flow.
+  - Standard `develop-web-game` Playwright client was attempted and still cannot launch because bundled Chromium is missing at `C:\Users\Tommy Deng\AppData\Local\ms-playwright\chromium_headless_shell-1217\chrome-headless-shell-win64\chrome-headless-shell.exe`.
+  - System Edge fallback UI verification passed with empty console errors:
+    - setup screen renders, start-game works, game board renders with 8 seats.
+    - injected visual checks confirmed `seat-needs-action`, `seat-target-pop`, and `seat-damage-pop` animations are visible.
+    - Screenshot inspected: `output/bugfix-wugu-effects/ui-highlight-effects.png`.
+
+- Latest update:
+  - Checked `南蛮入侵`, `万箭齐发`, and `桃园结义` for the same class of flow issue as `五谷丰登`.
+    - Their pending chains already blocked per-target resolution correctly, but they lacked a clear final completion event.
+    - Added explicit `结算完毕` logs and `lastEffect` completion feedback for all three.
+  - Added delayed-judgment interaction for `鬼才 / 鬼道`:
+    - When a judgment-area card flips a judgment card, the human player with `鬼才` or `鬼道` now gets a manual replacement window.
+    - Replacement uses the chosen hand card, discards the previous judgment card, then continues the original delayed-trick judgment.
+    - AI replacement can still happen after the human passes/acts.
+  - Added manual `天妒` interaction for judgment-area results:
+    - Human `郭嘉` now chooses whether to gain the final judgment card before the delayed trick continues.
+  - Added new pending action types:
+    - `judge_replace_response`
+    - `tiandu_response`
+  - Verified `npm run build` passes.
+  - Added and ran rule smoke tests under `output/judge-trick-sweep/`:
+    - `rule-smoke.ts`
+    - `rule-smoke.mjs`
+    - `rule-smoke-results.json`
+    - Covered completion feedback for `南蛮入侵` / `万箭齐发` / `桃园结义`, manual `鬼才` replacement, and manual `天妒`.
+  - Standard `develop-web-game` Playwright client was attempted and still cannot launch because bundled Chromium is missing at `C:\Users\Tommy Deng\AppData\Local\ms-playwright\chromium_headless_shell-1217\chrome-headless-shell-win64\chrome-headless-shell.exe`.
+  - System Edge fallback UI verification passed with empty console errors:
+    - setup screen renders, start-game works, game board renders with 8 seats.
+    - visual smoke confirmed the new `鬼才 / 鬼道` and `天妒` response panels render without layout/runtime errors.
+    - Screenshots saved as `output/judge-trick-sweep/ui-game-board.png` and `output/judge-trick-sweep/ui-judge-panels.png`.
+
+- Latest update:
+  - Migrated skill-owned judgments for `雷击`, `刚烈`, `铁骑`, `洛神`, and `双雄` onto the same manual judgment interaction path.
+    - Human `鬼才 / 鬼道` can now replace these skill judgment cards through `skill_judge_replace_response`.
+    - Human `天妒` can now choose whether to gain final skill judgment cards where the judgment owner should receive that choice, including `雷击` target judgments.
+    - `雷击` preserves and resumes its original post-`闪` / response context after the skill judgment resolves.
+    - `刚烈` resumes the damage-after-skill chain after judgment replacement and effect resolution.
+    - `铁骑` resumes the `杀` response window with the judgment result folded into whether the target may use `闪`.
+    - `洛神` and `双雄` now use replaceable skill judgment cards while preserving their original card-gain/color behavior.
+    - `雷击` and `刚烈` skill damage now refresh `lastEffect` as damage feedback so the existing damage pop animation can fire even without a normal damage card.
+  - Added new shared skill-judgment context plumbing in `src/game/types.ts` and `src/game/turn.ts`.
+  - Added UI panels in `src/App.tsx` for:
+    - `skill_judge_replace_response`
+    - `skill_tiandu_response`
+  - Verified `npm run build` passes.
+  - Added and ran rule smoke tests under `output/skill-judge-sweep/`:
+    - `rule-smoke.ts`
+    - `rule-smoke.mjs`
+    - `rule-smoke-results.json`
+    - Covered `铁骑`, `刚烈`, `雷击`, `雷击 + 天妒`, `洛神`, and `双雄`.
+  - Standard `develop-web-game` Playwright client was attempted and still cannot launch because bundled Chromium is missing at `C:\Users\Tommy Deng\AppData\Local\ms-playwright\chromium_headless_shell-1217\chrome-headless-shell-win64\chrome-headless-shell.exe`.
+  - System Edge fallback UI verification passed with empty console errors:
+    - setup screen renders, start-game works, game board renders with 8 seats.
+    - visual smoke confirmed the new skill judgment replacement and skill `天妒` response panels render without runtime errors.
+    - Screenshots saved as `output/skill-judge-sweep/ui-board-edge.png` and `output/skill-judge-sweep/ui-skill-judge-panels-edge.png`.
+
+- Latest update:
+  - Fixed the reported death/dying stall:
+    - `continueDyingResponses` now checks whether a human responder actually has a legal rescue card (`桃`, self `酒`, or `急救` red card) before opening the dying response window.
+    - If the human has no legal rescue card, the game logs an automatic non-response and continues the求桃 chain.
+    - Rule smoke confirms a rebel can die without leaving a stale `dying_response`, and the living damage source draws the rebel-kill reward of 3 cards.
+  - Improved AI trick visibility:
+    - Single-target tricks now emit a visible `lastEffect` target event as soon as the card is used and a target is specified, before `无懈可击` or follow-up response windows.
+    - Browser Edge smoke observed an AI `乐不思蜀` being shown on the table with the card image, target line, and target marker.
+  - Cleaned skill configuration:
+    - Removed stale `飞影` from the implemented-skill UI set because no current 42 selected generals use it.
+  - Added and ran config audit under `output/death-trick-audit/`:
+    - `config-audit.mjs`
+    - `config-audit-results.json`
+    - Checks passed for 42 selected generals, 43 card definitions, 160 deck instances, all asset files, all 66 current skill names, all 15 trick branches, all 22 equipment categories, and all 6 basic card branches.
+  - Verified `npm run build` passes.
+  - Added and ran rule smoke tests under `output/death-trick-audit/`:
+    - `rule-smoke.ts`
+    - `rule-smoke.mjs`
+    - `rule-smoke-results.json`
+    - Covered no-rescue human auto-skip, rebel death reward, human with Peach prompt, and AI targeted trick visible before Wuxie.
+  - Standard `develop-web-game` Playwright client was attempted and still cannot launch because bundled Chromium is missing at `C:\Users\Tommy Deng\AppData\Local\ms-playwright\chromium_headless_shell-1217\chrome-headless-shell-win64\chrome-headless-shell.exe`.
+  - System Edge fallback UI verification passed with empty console errors:
+    - setup screen renders, player discard can be resolved, AI turns advance.
+    - screenshot inspected: `output/death-trick-audit/ui-after-ai-steps.png`.
+
+- Latest update:
+  - Final 1.0 release pass:
+    - Set `package.json` and `package-lock.json` version to `1.0.0`.
+    - Renamed the browser title and table header from `三国杀 8 人桌面原型` / `单机三国杀` to `肥喵多尼的AI三国杀`.
+    - Updated `summarizeState().mode` to `肥喵多尼的AI三国杀` so browser test text state matches the shipped title.
+  - Verified there are no remaining source references to the old title or `0.1.0` version in `package.json`, `package-lock.json`, `index.html`, `src`, `public`, or `scripts`.
+  - Verified `npm run build` passes after the rename/version changes.
+  - Re-ran config audit:
+    - `output/death-trick-audit/config-audit.mjs`
+    - result: ok for 42 selected generals, 43 card definitions, 160 deck instances, 66 current skills, all trick branches, all equipment categories, and all basic card branches.
+  - Re-ran 8 rule regression scripts via `output/final-1.0/run-regression.ps1`; all passed:
+    - `output/bugfix-wugu-effects/rule-smoke.ts`
+    - `output/judge-trick-sweep/rule-smoke.ts`
+    - `output/manual-trigger-batch5/manual-trigger-smoke.ts`
+    - `output/manual-trigger-batch6/damage-trigger-smoke.ts`
+    - `output/manual-trigger-batch7/phase-trigger-smoke.ts`
+    - `output/manual-trigger-batch8/prepare-trigger-smoke.ts`
+    - `output/skill-judge-sweep/rule-smoke.ts`
+    - `output/death-trick-audit/rule-smoke.ts`
+    - summary saved at `output/final-1.0/regression-summary.json`.
+  - Standard `develop-web-game` Playwright client was attempted and still cannot launch because bundled Chromium is missing at `C:\Users\Tommy Deng\AppData\Local\ms-playwright\chromium_headless_shell-1217\chrome-headless-shell-win64\chrome-headless-shell.exe`.
+  - System Edge fallback UI verification passed with empty console errors:
+    - `document.title`, table header, and `render_game_to_text().mode` all equal `肥喵多尼的AI三国杀`.
+    - Start screen, start-game flow, board rendering, AI advance, discard resolution, trick display, and skill judgment response were observed.
+    - Screenshots inspected: `output/final-1.0/ui-board-title.png` and `output/final-1.0/ui-after-automation.png`.

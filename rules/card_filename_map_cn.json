@@ -1,0 +1,260 @@
+[
+  {
+    "card_id": "sha",
+    "zh_name": "杀",
+    "expected_filename": "杀.png",
+    "relative_path": "assets/cards/art/杀.png"
+  },
+  {
+    "card_id": "huosha",
+    "zh_name": "火杀",
+    "expected_filename": "火杀.png",
+    "relative_path": "assets/cards/art/火杀.png"
+  },
+  {
+    "card_id": "leisha",
+    "zh_name": "雷杀",
+    "expected_filename": "雷杀.png",
+    "relative_path": "assets/cards/art/雷杀.png"
+  },
+  {
+    "card_id": "shan",
+    "zh_name": "闪",
+    "expected_filename": "闪.png",
+    "relative_path": "assets/cards/art/闪.png"
+  },
+  {
+    "card_id": "tao",
+    "zh_name": "桃",
+    "expected_filename": "桃.png",
+    "relative_path": "assets/cards/art/桃.png"
+  },
+  {
+    "card_id": "jiu",
+    "zh_name": "酒",
+    "expected_filename": "酒.png",
+    "relative_path": "assets/cards/art/酒.png"
+  },
+  {
+    "card_id": "taoyuanjieyi",
+    "zh_name": "桃园结义",
+    "expected_filename": "桃园结义.png",
+    "relative_path": "assets/cards/art/桃园结义.png"
+  },
+  {
+    "card_id": "wanjianqifa",
+    "zh_name": "万箭齐发",
+    "expected_filename": "万箭齐发.png",
+    "relative_path": "assets/cards/art/万箭齐发.png"
+  },
+  {
+    "card_id": "wugufengdeng",
+    "zh_name": "五谷丰登",
+    "expected_filename": "五谷丰登.png",
+    "relative_path": "assets/cards/art/五谷丰登.png"
+  },
+  {
+    "card_id": "juedou",
+    "zh_name": "决斗",
+    "expected_filename": "决斗.png",
+    "relative_path": "assets/cards/art/决斗.png"
+  },
+  {
+    "card_id": "guohechaiqiao",
+    "zh_name": "过河拆桥",
+    "expected_filename": "过河拆桥.png",
+    "relative_path": "assets/cards/art/过河拆桥.png"
+  },
+  {
+    "card_id": "shunshouqianyang",
+    "zh_name": "顺手牵羊",
+    "expected_filename": "顺手牵羊.png",
+    "relative_path": "assets/cards/art/顺手牵羊.png"
+  },
+  {
+    "card_id": "wuzhongshengyou",
+    "zh_name": "无中生有",
+    "expected_filename": "无中生有.png",
+    "relative_path": "assets/cards/art/无中生有.png"
+  },
+  {
+    "card_id": "wuxiekeji",
+    "zh_name": "无懈可击",
+    "expected_filename": "无懈可击.png",
+    "relative_path": "assets/cards/art/无懈可击.png"
+  },
+  {
+    "card_id": "nanmanruqin",
+    "zh_name": "南蛮入侵",
+    "expected_filename": "南蛮入侵.png",
+    "relative_path": "assets/cards/art/南蛮入侵.png"
+  },
+  {
+    "card_id": "jiedaosharen",
+    "zh_name": "借刀杀人",
+    "expected_filename": "借刀杀人.png",
+    "relative_path": "assets/cards/art/借刀杀人.png"
+  },
+  {
+    "card_id": "huogong",
+    "zh_name": "火攻",
+    "expected_filename": "火攻.png",
+    "relative_path": "assets/cards/art/火攻.png"
+  },
+  {
+    "card_id": "tiesuolianhuan",
+    "zh_name": "铁索连环",
+    "expected_filename": "铁索连环.png",
+    "relative_path": "assets/cards/art/铁索连环.png"
+  },
+  {
+    "card_id": "lebusishu",
+    "zh_name": "乐不思蜀",
+    "expected_filename": "乐不思蜀.png",
+    "relative_path": "assets/cards/art/乐不思蜀.png"
+  },
+  {
+    "card_id": "shandian",
+    "zh_name": "闪电",
+    "expected_filename": "闪电.png",
+    "relative_path": "assets/cards/art/闪电.png"
+  },
+  {
+    "card_id": "bingliangcunduan",
+    "zh_name": "兵粮寸断",
+    "expected_filename": "兵粮寸断.png",
+    "relative_path": "assets/cards/art/兵粮寸断.png"
+  },
+  {
+    "card_id": "zhuge_liannu",
+    "zh_name": "诸葛连弩",
+    "expected_filename": "诸葛连弩.png",
+    "relative_path": "assets/cards/art/诸葛连弩.png"
+  },
+  {
+    "card_id": "cixiong_shuanggujian",
+    "zh_name": "雌雄双股剑",
+    "expected_filename": "雌雄双股剑.png",
+    "relative_path": "assets/cards/art/雌雄双股剑.png"
+  },
+  {
+    "card_id": "qinggangjian",
+    "zh_name": "青釭剑",
+    "expected_filename": "青釭剑.png",
+    "relative_path": "assets/cards/art/青釭剑.png"
+  },
+  {
+    "card_id": "qinglong_yanyuedao",
+    "zh_name": "青龙偃月刀",
+    "expected_filename": "青龙偃月刀.png",
+    "relative_path": "assets/cards/art/青龙偃月刀.png"
+  },
+  {
+    "card_id": "zhangba_shemao",
+    "zh_name": "丈八蛇矛",
+    "expected_filename": "丈八蛇矛.png",
+    "relative_path": "assets/cards/art/丈八蛇矛.png"
+  },
+  {
+    "card_id": "guanshifu",
+    "zh_name": "贯石斧",
+    "expected_filename": "贯石斧.png",
+    "relative_path": "assets/cards/art/贯石斧.png"
+  },
+  {
+    "card_id": "fangtian_huaji",
+    "zh_name": "方天画戟",
+    "expected_filename": "方天画戟.png",
+    "relative_path": "assets/cards/art/方天画戟.png"
+  },
+  {
+    "card_id": "qilingong",
+    "zh_name": "麒麟弓",
+    "expected_filename": "麒麟弓.png",
+    "relative_path": "assets/cards/art/麒麟弓.png"
+  },
+  {
+    "card_id": "hanbingjian",
+    "zh_name": "寒冰剑",
+    "expected_filename": "寒冰剑.png",
+    "relative_path": "assets/cards/art/寒冰剑.png"
+  },
+  {
+    "card_id": "gudingdao",
+    "zh_name": "古锭刀",
+    "expected_filename": "古锭刀.png",
+    "relative_path": "assets/cards/art/古锭刀.png"
+  },
+  {
+    "card_id": "zhuque_yushan",
+    "zh_name": "朱雀羽扇",
+    "expected_filename": "朱雀羽扇.png",
+    "relative_path": "assets/cards/art/朱雀羽扇.png"
+  },
+  {
+    "card_id": "baguazhen",
+    "zh_name": "八卦阵",
+    "expected_filename": "八卦阵.png",
+    "relative_path": "assets/cards/art/八卦阵.png"
+  },
+  {
+    "card_id": "renwangdun",
+    "zh_name": "仁王盾",
+    "expected_filename": "仁王盾.png",
+    "relative_path": "assets/cards/art/仁王盾.png"
+  },
+  {
+    "card_id": "tengjia",
+    "zh_name": "藤甲",
+    "expected_filename": "藤甲.png",
+    "relative_path": "assets/cards/art/藤甲.png"
+  },
+  {
+    "card_id": "baiyinshizi",
+    "zh_name": "白银狮子",
+    "expected_filename": "白银狮子.png",
+    "relative_path": "assets/cards/art/白银狮子.png"
+  },
+  {
+    "card_id": "chitu",
+    "zh_name": "赤兔",
+    "expected_filename": "赤兔.png",
+    "relative_path": "assets/cards/art/赤兔.png"
+  },
+  {
+    "card_id": "dayuan",
+    "zh_name": "大宛",
+    "expected_filename": "大宛.png",
+    "relative_path": "assets/cards/art/大宛.png"
+  },
+  {
+    "card_id": "zixing",
+    "zh_name": "紫骍",
+    "expected_filename": "紫骍.png",
+    "relative_path": "assets/cards/art/紫骍.png"
+  },
+  {
+    "card_id": "dilu",
+    "zh_name": "的卢",
+    "expected_filename": "的卢.png",
+    "relative_path": "assets/cards/art/的卢.png"
+  },
+  {
+    "card_id": "juahuangfeidian",
+    "zh_name": "爪黄飞电",
+    "expected_filename": "爪黄飞电.png",
+    "relative_path": "assets/cards/art/爪黄飞电.png"
+  },
+  {
+    "card_id": "jueying",
+    "zh_name": "绝影",
+    "expected_filename": "绝影.png",
+    "relative_path": "assets/cards/art/绝影.png"
+  },
+  {
+    "card_id": "hualiu",
+    "zh_name": "骅骝",
+    "expected_filename": "骅骝.png",
+    "relative_path": "assets/cards/art/骅骝.png"
+  }
+]

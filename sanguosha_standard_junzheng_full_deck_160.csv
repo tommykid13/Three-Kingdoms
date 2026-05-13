@@ -1,0 +1,161 @@
+﻿instance_id,pack,is_ex_card,name,suit_symbol,suit,rank,color,category,subtype,image_key
+standard_heart_A_桃园结义_1,标准包,否,桃园结义,♥,红桃,A,红色,锦囊牌,普通锦囊 / 群体,taoyuanjieyi
+standard_heart_A_万箭齐发_1,标准包,否,万箭齐发,♥,红桃,A,红色,锦囊牌,普通锦囊 / 群体,wanjianqifa
+standard_heart_2_闪_1,标准包,否,闪,♥,红桃,2,红色,基本牌,响应牌,shan
+standard_heart_2_闪_2,标准包,否,闪,♥,红桃,2,红色,基本牌,响应牌,shan
+standard_heart_3_桃_1,标准包,否,桃,♥,红桃,3,红色,基本牌,回复牌,tao
+standard_heart_3_五谷丰登_1,标准包,否,五谷丰登,♥,红桃,3,红色,锦囊牌,普通锦囊 / 群体,wugufengdeng
+standard_heart_4_桃_1,标准包,否,桃,♥,红桃,4,红色,基本牌,回复牌,tao
+standard_heart_4_五谷丰登_1,标准包,否,五谷丰登,♥,红桃,4,红色,锦囊牌,普通锦囊 / 群体,wugufengdeng
+standard_heart_5_麒麟弓_1,标准包,否,麒麟弓,♥,红桃,5,红色,装备牌,武器,qilingong
+standard_heart_5_赤兔_1,标准包,否,赤兔,♥,红桃,5,红色,装备牌,-1坐骑,chitu
+standard_heart_6_桃_1,标准包,否,桃,♥,红桃,6,红色,基本牌,回复牌,tao
+standard_heart_6_乐不思蜀_1,标准包,否,乐不思蜀,♥,红桃,6,红色,锦囊牌,延时锦囊,lebusishu
+standard_heart_7_桃_1,标准包,否,桃,♥,红桃,7,红色,基本牌,回复牌,tao
+standard_heart_7_无中生有_1,标准包,否,无中生有,♥,红桃,7,红色,锦囊牌,普通锦囊 / 自用,wuzhongshengyou
+standard_heart_8_桃_1,标准包,否,桃,♥,红桃,8,红色,基本牌,回复牌,tao
+standard_heart_8_无中生有_1,标准包,否,无中生有,♥,红桃,8,红色,锦囊牌,普通锦囊 / 自用,wuzhongshengyou
+standard_heart_9_桃_1,标准包,否,桃,♥,红桃,9,红色,基本牌,回复牌,tao
+standard_heart_9_无中生有_1,标准包,否,无中生有,♥,红桃,9,红色,锦囊牌,普通锦囊 / 自用,wuzhongshengyou
+standard_heart_10_杀_1,标准包,否,杀,♥,红桃,10,红色,基本牌,普通杀,sha
+standard_heart_10_杀_2,标准包,否,杀,♥,红桃,10,红色,基本牌,普通杀,sha
+standard_heart_J_杀_1,标准包,否,杀,♥,红桃,J,红色,基本牌,普通杀,sha
+standard_heart_J_无中生有_1,标准包,否,无中生有,♥,红桃,J,红色,锦囊牌,普通锦囊 / 自用,wuzhongshengyou
+standard_heart_Q_桃_1,标准包,否,桃,♥,红桃,Q,红色,基本牌,回复牌,tao
+standard_heart_Q_过河拆桥_1,标准包,否,过河拆桥,♥,红桃,Q,红色,锦囊牌,普通锦囊 / 单体,guohechaiqiao
+standard_heart_Q_闪电_1,标准包,是,闪电,♥,红桃,Q,红色,锦囊牌,延时锦囊,shandian
+standard_heart_K_闪_1,标准包,否,闪,♥,红桃,K,红色,基本牌,响应牌,shan
+standard_heart_K_爪黄飞电_1,标准包,否,爪黄飞电,♥,红桃,K,红色,装备牌,+1坐骑,juahuangfeidian
+standard_spade_A_决斗_1,标准包,否,决斗,♠,黑桃,A,黑色,锦囊牌,普通锦囊 / 单体,juedou
+standard_spade_A_闪电_1,标准包,否,闪电,♠,黑桃,A,黑色,锦囊牌,延时锦囊,shandian
+standard_spade_2_雌雄双股剑_1,标准包,否,雌雄双股剑,♠,黑桃,2,黑色,装备牌,武器,ci_xiong_shuang_gu_jian
+standard_spade_2_八卦阵_1,标准包,否,八卦阵,♠,黑桃,2,黑色,装备牌,防具,baguazhen
+standard_spade_2_寒冰剑_1,标准包,是,寒冰剑,♠,黑桃,2,黑色,装备牌,武器,hanbingjian
+standard_spade_3_过河拆桥_1,标准包,否,过河拆桥,♠,黑桃,3,黑色,锦囊牌,普通锦囊 / 单体,guohechaiqiao
+standard_spade_3_顺手牵羊_1,标准包,否,顺手牵羊,♠,黑桃,3,黑色,锦囊牌,普通锦囊 / 单体,shunshouqianyang
+standard_spade_4_过河拆桥_1,标准包,否,过河拆桥,♠,黑桃,4,黑色,锦囊牌,普通锦囊 / 单体,guohechaiqiao
+standard_spade_4_顺手牵羊_1,标准包,否,顺手牵羊,♠,黑桃,4,黑色,锦囊牌,普通锦囊 / 单体,shunshouqianyang
+standard_spade_5_青龙偃月刀_1,标准包,否,青龙偃月刀,♠,黑桃,5,黑色,装备牌,武器,qinglong_yanyuedao
+standard_spade_5_绝影_1,标准包,否,绝影,♠,黑桃,5,黑色,装备牌,+1坐骑,jueying
+standard_spade_6_乐不思蜀_1,标准包,否,乐不思蜀,♠,黑桃,6,黑色,锦囊牌,延时锦囊,lebusishu
+standard_spade_6_青釭剑_1,标准包,否,青釭剑,♠,黑桃,6,黑色,装备牌,武器,qinggangjian
+standard_spade_7_杀_1,标准包,否,杀,♠,黑桃,7,黑色,基本牌,普通杀,sha
+standard_spade_7_南蛮入侵_1,标准包,否,南蛮入侵,♠,黑桃,7,黑色,锦囊牌,普通锦囊 / 群体,nanmanruqin
+standard_spade_8_杀_1,标准包,否,杀,♠,黑桃,8,黑色,基本牌,普通杀,sha
+standard_spade_8_杀_2,标准包,否,杀,♠,黑桃,8,黑色,基本牌,普通杀,sha
+standard_spade_9_杀_1,标准包,否,杀,♠,黑桃,9,黑色,基本牌,普通杀,sha
+standard_spade_9_杀_2,标准包,否,杀,♠,黑桃,9,黑色,基本牌,普通杀,sha
+standard_spade_10_杀_1,标准包,否,杀,♠,黑桃,10,黑色,基本牌,普通杀,sha
+standard_spade_10_杀_2,标准包,否,杀,♠,黑桃,10,黑色,基本牌,普通杀,sha
+standard_spade_J_顺手牵羊_1,标准包,否,顺手牵羊,♠,黑桃,J,黑色,锦囊牌,普通锦囊 / 单体,shunshouqianyang
+standard_spade_J_无懈可击_1,标准包,否,无懈可击,♠,黑桃,J,黑色,锦囊牌,普通锦囊 / 响应,wuxiekeji
+standard_spade_Q_过河拆桥_1,标准包,否,过河拆桥,♠,黑桃,Q,黑色,锦囊牌,普通锦囊 / 单体,guohechaiqiao
+standard_spade_Q_丈八蛇矛_1,标准包,否,丈八蛇矛,♠,黑桃,Q,黑色,装备牌,武器,zhangba_shemao
+standard_spade_K_南蛮入侵_1,标准包,否,南蛮入侵,♠,黑桃,K,黑色,锦囊牌,普通锦囊 / 群体,nanmanruqin
+standard_spade_K_大宛_1,标准包,否,大宛,♠,黑桃,K,黑色,装备牌,-1坐骑,dayuan
+standard_diamond_A_诸葛连弩_1,标准包,否,诸葛连弩,♦,方片,A,红色,装备牌,武器,zhuge_liannu
+standard_diamond_A_决斗_1,标准包,否,决斗,♦,方片,A,红色,锦囊牌,普通锦囊 / 单体,juedou
+standard_diamond_2_闪_1,标准包,否,闪,♦,方片,2,红色,基本牌,响应牌,shan
+standard_diamond_2_闪_2,标准包,否,闪,♦,方片,2,红色,基本牌,响应牌,shan
+standard_diamond_3_闪_1,标准包,否,闪,♦,方片,3,红色,基本牌,响应牌,shan
+standard_diamond_3_顺手牵羊_1,标准包,否,顺手牵羊,♦,方片,3,红色,锦囊牌,普通锦囊 / 单体,shunshouqianyang
+standard_diamond_4_闪_1,标准包,否,闪,♦,方片,4,红色,基本牌,响应牌,shan
+standard_diamond_4_顺手牵羊_1,标准包,否,顺手牵羊,♦,方片,4,红色,锦囊牌,普通锦囊 / 单体,shunshouqianyang
+standard_diamond_5_闪_1,标准包,否,闪,♦,方片,5,红色,基本牌,响应牌,shan
+standard_diamond_5_贯石斧_1,标准包,否,贯石斧,♦,方片,5,红色,装备牌,武器,guanshifu
+standard_diamond_6_杀_1,标准包,否,杀,♦,方片,6,红色,基本牌,普通杀,sha
+standard_diamond_6_闪_1,标准包,否,闪,♦,方片,6,红色,基本牌,响应牌,shan
+standard_diamond_7_杀_1,标准包,否,杀,♦,方片,7,红色,基本牌,普通杀,sha
+standard_diamond_7_闪_1,标准包,否,闪,♦,方片,7,红色,基本牌,响应牌,shan
+standard_diamond_8_杀_1,标准包,否,杀,♦,方片,8,红色,基本牌,普通杀,sha
+standard_diamond_8_闪_1,标准包,否,闪,♦,方片,8,红色,基本牌,响应牌,shan
+standard_diamond_9_杀_1,标准包,否,杀,♦,方片,9,红色,基本牌,普通杀,sha
+standard_diamond_9_闪_1,标准包,否,闪,♦,方片,9,红色,基本牌,响应牌,shan
+standard_diamond_10_杀_1,标准包,否,杀,♦,方片,10,红色,基本牌,普通杀,sha
+standard_diamond_10_闪_1,标准包,否,闪,♦,方片,10,红色,基本牌,响应牌,shan
+standard_diamond_J_闪_1,标准包,否,闪,♦,方片,J,红色,基本牌,响应牌,shan
+standard_diamond_J_闪_2,标准包,否,闪,♦,方片,J,红色,基本牌,响应牌,shan
+standard_diamond_Q_桃_1,标准包,否,桃,♦,方片,Q,红色,基本牌,回复牌,tao
+standard_diamond_Q_方天画戟_1,标准包,否,方天画戟,♦,方片,Q,红色,装备牌,武器,fangtian_huaji
+standard_diamond_Q_无懈可击_1,标准包,是,无懈可击,♦,方片,Q,红色,锦囊牌,普通锦囊 / 响应,wuxiekeji
+standard_diamond_K_杀_1,标准包,否,杀,♦,方片,K,红色,基本牌,普通杀,sha
+standard_diamond_K_紫骍_1,标准包,否,紫骍,♦,方片,K,红色,装备牌,-1坐骑,zixing
+standard_club_A_决斗_1,标准包,否,决斗,♣,梅花,A,黑色,锦囊牌,普通锦囊 / 单体,juedou
+standard_club_A_诸葛连弩_1,标准包,否,诸葛连弩,♣,梅花,A,黑色,装备牌,武器,zhuge_liannu
+standard_club_2_杀_1,标准包,否,杀,♣,梅花,2,黑色,基本牌,普通杀,sha
+standard_club_2_八卦阵_1,标准包,否,八卦阵,♣,梅花,2,黑色,装备牌,防具,baguazhen
+standard_club_2_仁王盾_1,标准包,是,仁王盾,♣,梅花,2,黑色,装备牌,防具,renwangdun
+standard_club_3_杀_1,标准包,否,杀,♣,梅花,3,黑色,基本牌,普通杀,sha
+standard_club_3_过河拆桥_1,标准包,否,过河拆桥,♣,梅花,3,黑色,锦囊牌,普通锦囊 / 单体,guohechaiqiao
+standard_club_4_杀_1,标准包,否,杀,♣,梅花,4,黑色,基本牌,普通杀,sha
+standard_club_4_过河拆桥_1,标准包,否,过河拆桥,♣,梅花,4,黑色,锦囊牌,普通锦囊 / 单体,guohechaiqiao
+standard_club_5_杀_1,标准包,否,杀,♣,梅花,5,黑色,基本牌,普通杀,sha
+standard_club_5_的卢_1,标准包,否,的卢,♣,梅花,5,黑色,装备牌,+1坐骑,dilu
+standard_club_6_杀_1,标准包,否,杀,♣,梅花,6,黑色,基本牌,普通杀,sha
+standard_club_6_乐不思蜀_1,标准包,否,乐不思蜀,♣,梅花,6,黑色,锦囊牌,延时锦囊,lebusishu
+standard_club_7_杀_1,标准包,否,杀,♣,梅花,7,黑色,基本牌,普通杀,sha
+standard_club_7_南蛮入侵_1,标准包,否,南蛮入侵,♣,梅花,7,黑色,锦囊牌,普通锦囊 / 群体,nanmanruqin
+standard_club_8_杀_1,标准包,否,杀,♣,梅花,8,黑色,基本牌,普通杀,sha
+standard_club_8_杀_2,标准包,否,杀,♣,梅花,8,黑色,基本牌,普通杀,sha
+standard_club_9_杀_1,标准包,否,杀,♣,梅花,9,黑色,基本牌,普通杀,sha
+standard_club_9_杀_2,标准包,否,杀,♣,梅花,9,黑色,基本牌,普通杀,sha
+standard_club_10_杀_1,标准包,否,杀,♣,梅花,10,黑色,基本牌,普通杀,sha
+standard_club_10_杀_2,标准包,否,杀,♣,梅花,10,黑色,基本牌,普通杀,sha
+standard_club_J_杀_1,标准包,否,杀,♣,梅花,J,黑色,基本牌,普通杀,sha
+standard_club_J_杀_2,标准包,否,杀,♣,梅花,J,黑色,基本牌,普通杀,sha
+standard_club_Q_借刀杀人_1,标准包,否,借刀杀人,♣,梅花,Q,黑色,锦囊牌,普通锦囊 / 单体,jiedaosharen
+standard_club_Q_无懈可击_1,标准包,否,无懈可击,♣,梅花,Q,黑色,锦囊牌,普通锦囊 / 响应,wuxiekeji
+standard_club_K_借刀杀人_1,标准包,否,借刀杀人,♣,梅花,K,黑色,锦囊牌,普通锦囊 / 单体,jiedaosharen
+standard_club_K_无懈可击_1,标准包,否,无懈可击,♣,梅花,K,黑色,锦囊牌,普通锦囊 / 响应,wuxiekeji
+junzheng_heart_A_无懈可击_1,军争篇,否,无懈可击,♥,红桃,A,红色,锦囊牌,普通锦囊 / 响应,wuxiekeji
+junzheng_heart_2_火攻_1,军争篇,否,火攻,♥,红桃,2,红色,锦囊牌,普通锦囊 / 单体,huogong
+junzheng_heart_3_火攻_1,军争篇,否,火攻,♥,红桃,3,红色,锦囊牌,普通锦囊 / 单体,huogong
+junzheng_heart_4_火杀_1,军争篇,否,火杀,♥,红桃,4,红色,基本牌,火焰杀,huosha
+junzheng_heart_5_桃_1,军争篇,否,桃,♥,红桃,5,红色,基本牌,回复牌,tao
+junzheng_heart_6_桃_1,军争篇,否,桃,♥,红桃,6,红色,基本牌,回复牌,tao
+junzheng_heart_7_火杀_1,军争篇,否,火杀,♥,红桃,7,红色,基本牌,火焰杀,huosha
+junzheng_heart_8_闪_1,军争篇,否,闪,♥,红桃,8,红色,基本牌,响应牌,shan
+junzheng_heart_9_闪_1,军争篇,否,闪,♥,红桃,9,红色,基本牌,响应牌,shan
+junzheng_heart_10_火杀_1,军争篇,否,火杀,♥,红桃,10,红色,基本牌,火焰杀,huosha
+junzheng_heart_J_闪_1,军争篇,否,闪,♥,红桃,J,红色,基本牌,响应牌,shan
+junzheng_heart_Q_闪_1,军争篇,否,闪,♥,红桃,Q,红色,基本牌,响应牌,shan
+junzheng_heart_K_无懈可击_1,军争篇,否,无懈可击,♥,红桃,K,红色,锦囊牌,普通锦囊 / 响应,wuxiekeji
+junzheng_club_A_白银狮子_1,军争篇,否,白银狮子,♣,梅花,A,黑色,装备牌,防具,baiyinshizi
+junzheng_club_2_藤甲_1,军争篇,否,藤甲,♣,梅花,2,黑色,装备牌,防具,tengjia
+junzheng_club_3_酒_1,军争篇,否,酒,♣,梅花,3,黑色,基本牌,状态牌,jiu
+junzheng_club_4_兵粮寸断_1,军争篇,否,兵粮寸断,♣,梅花,4,黑色,锦囊牌,延时锦囊,bingliangcunduan
+junzheng_club_5_雷杀_1,军争篇,否,雷杀,♣,梅花,5,黑色,基本牌,雷电杀,leisha
+junzheng_club_6_雷杀_1,军争篇,否,雷杀,♣,梅花,6,黑色,基本牌,雷电杀,leisha
+junzheng_club_7_雷杀_1,军争篇,否,雷杀,♣,梅花,7,黑色,基本牌,雷电杀,leisha
+junzheng_club_8_雷杀_1,军争篇,否,雷杀,♣,梅花,8,黑色,基本牌,雷电杀,leisha
+junzheng_club_9_酒_1,军争篇,否,酒,♣,梅花,9,黑色,基本牌,状态牌,jiu
+junzheng_club_10_铁索连环_1,军争篇,否,铁索连环,♣,梅花,10,黑色,锦囊牌,普通锦囊 / 单体,tiesuolianhuan
+junzheng_club_J_铁索连环_1,军争篇,否,铁索连环,♣,梅花,J,黑色,锦囊牌,普通锦囊 / 单体,tiesuolianhuan
+junzheng_club_Q_铁索连环_1,军争篇,否,铁索连环,♣,梅花,Q,黑色,锦囊牌,普通锦囊 / 单体,tiesuolianhuan
+junzheng_club_K_铁索连环_1,军争篇,否,铁索连环,♣,梅花,K,黑色,锦囊牌,普通锦囊 / 单体,tiesuolianhuan
+junzheng_spade_A_古锭刀_1,军争篇,否,古锭刀,♠,黑桃,A,黑色,装备牌,武器,gudingdao
+junzheng_spade_2_藤甲_1,军争篇,否,藤甲,♠,黑桃,2,黑色,装备牌,防具,tengjia
+junzheng_spade_3_酒_1,军争篇,否,酒,♠,黑桃,3,黑色,基本牌,状态牌,jiu
+junzheng_spade_4_雷杀_1,军争篇,否,雷杀,♠,黑桃,4,黑色,基本牌,雷电杀,leisha
+junzheng_spade_5_雷杀_1,军争篇,否,雷杀,♠,黑桃,5,黑色,基本牌,雷电杀,leisha
+junzheng_spade_6_雷杀_1,军争篇,否,雷杀,♠,黑桃,6,黑色,基本牌,雷电杀,leisha
+junzheng_spade_7_雷杀_1,军争篇,否,雷杀,♠,黑桃,7,黑色,基本牌,雷电杀,leisha
+junzheng_spade_8_雷杀_1,军争篇,否,雷杀,♠,黑桃,8,黑色,基本牌,雷电杀,leisha
+junzheng_spade_9_酒_1,军争篇,否,酒,♠,黑桃,9,黑色,基本牌,状态牌,jiu
+junzheng_spade_10_兵粮寸断_1,军争篇,否,兵粮寸断,♠,黑桃,10,黑色,锦囊牌,延时锦囊,bingliangcunduan
+junzheng_spade_J_铁索连环_1,军争篇,否,铁索连环,♠,黑桃,J,黑色,锦囊牌,普通锦囊 / 单体,tiesuolianhuan
+junzheng_spade_Q_铁索连环_1,军争篇,否,铁索连环,♠,黑桃,Q,黑色,锦囊牌,普通锦囊 / 单体,tiesuolianhuan
+junzheng_spade_K_无懈可击_1,军争篇,否,无懈可击,♠,黑桃,K,黑色,锦囊牌,普通锦囊 / 响应,wuxiekeji
+junzheng_diamond_A_朱雀羽扇_1,军争篇,否,朱雀羽扇,♦,方片,A,红色,装备牌,武器,zhuque_yushan
+junzheng_diamond_2_桃_1,军争篇,否,桃,♦,方片,2,红色,基本牌,回复牌,tao
+junzheng_diamond_3_桃_1,军争篇,否,桃,♦,方片,3,红色,基本牌,回复牌,tao
+junzheng_diamond_4_火杀_1,军争篇,否,火杀,♦,方片,4,红色,基本牌,火焰杀,huosha
+junzheng_diamond_5_火杀_1,军争篇,否,火杀,♦,方片,5,红色,基本牌,火焰杀,huosha
+junzheng_diamond_6_闪_1,军争篇,否,闪,♦,方片,6,红色,基本牌,响应牌,shan
+junzheng_diamond_7_闪_1,军争篇,否,闪,♦,方片,7,红色,基本牌,响应牌,shan
+junzheng_diamond_8_闪_1,军争篇,否,闪,♦,方片,8,红色,基本牌,响应牌,shan
+junzheng_diamond_9_酒_1,军争篇,否,酒,♦,方片,9,红色,基本牌,状态牌,jiu
+junzheng_diamond_10_闪_1,军争篇,否,闪,♦,方片,10,红色,基本牌,响应牌,shan
+junzheng_diamond_J_闪_1,军争篇,否,闪,♦,方片,J,红色,基本牌,响应牌,shan
+junzheng_diamond_Q_火攻_1,军争篇,否,火攻,♦,方片,Q,红色,锦囊牌,普通锦囊 / 单体,huogong
+junzheng_diamond_K_骅骝_1,军争篇,否,骅骝,♦,方片,K,红色,装备牌,+1坐骑,hualiu

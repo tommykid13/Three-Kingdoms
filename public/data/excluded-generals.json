@@ -1,0 +1,106 @@
+[
+  {
+    "name": "于吉",
+    "pack": "风",
+    "faction": "群",
+    "maxHp": 3,
+    "reason": "missing_general_image",
+    "expectedImage": "于吉.png"
+  },
+  {
+    "name": "神关羽",
+    "pack": "风",
+    "faction": "神",
+    "maxHp": 5,
+    "reason": "missing_general_image",
+    "expectedImage": "神关羽.png"
+  },
+  {
+    "name": "神吕蒙",
+    "pack": "风",
+    "faction": "神",
+    "maxHp": 3,
+    "reason": "missing_general_image",
+    "expectedImage": "神吕蒙.png"
+  },
+  {
+    "name": "卧龙诸葛亮",
+    "pack": "火",
+    "faction": "蜀",
+    "maxHp": 3,
+    "reason": "missing_general_image",
+    "expectedImage": "卧龙诸葛亮.png"
+  },
+  {
+    "name": "神周瑜",
+    "pack": "火",
+    "faction": "神",
+    "maxHp": 4,
+    "reason": "missing_general_image",
+    "expectedImage": "神周瑜.png"
+  },
+  {
+    "name": "神诸葛亮",
+    "pack": "火",
+    "faction": "神",
+    "maxHp": 3,
+    "reason": "missing_general_image",
+    "expectedImage": "神诸葛亮.png"
+  },
+  {
+    "name": "邓艾",
+    "pack": "山",
+    "faction": "魏",
+    "maxHp": 4,
+    "reason": "missing_general_image",
+    "expectedImage": "邓艾.png"
+  },
+  {
+    "name": "姜维",
+    "pack": "山",
+    "faction": "蜀",
+    "maxHp": 4,
+    "reason": "missing_general_image",
+    "expectedImage": "姜维.png"
+  },
+  {
+    "name": "孙策",
+    "pack": "山",
+    "faction": "吴",
+    "maxHp": 4,
+    "reason": "missing_general_image",
+    "expectedImage": "孙策.png"
+  },
+  {
+    "name": "张昭张纮",
+    "pack": "山",
+    "faction": "吴",
+    "maxHp": 3,
+    "reason": "missing_general_image",
+    "expectedImage": "张昭张纮.png"
+  },
+  {
+    "name": "左慈",
+    "pack": "山",
+    "faction": "群",
+    "maxHp": 3,
+    "reason": "missing_general_image",
+    "expectedImage": "左慈.png"
+  },
+  {
+    "name": "神赵云",
+    "pack": "山",
+    "faction": "神",
+    "maxHp": 2,
+    "reason": "missing_general_image",
+    "expectedImage": "神赵云.png"
+  },
+  {
+    "name": "神司马懿",
+    "pack": "山",
+    "faction": "神",
+    "maxHp": 4,
+    "reason": "missing_general_image",
+    "expectedImage": "神司马懿.png"
+  }
+]

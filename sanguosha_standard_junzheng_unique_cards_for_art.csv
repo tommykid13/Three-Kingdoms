@@ -1,0 +1,44 @@
+﻿card_id,name,pack,category,subtype,body_text,image_key,template_group,range
+sha,杀,标准包,基本牌,普通杀,出牌阶段，对攻击范围内的一名角色使用。目标需打出一张【闪】，否则受到你造成的1点伤害。,sha,basic,
+shan,闪,标准包+军争篇,基本牌,响应牌,当你成为【杀】的目标时，可以使用【闪】抵消之。,shan,basic,
+tao,桃,标准包+军争篇,基本牌,回复牌,对自己使用，回复1点体力。任意角色进入濒死状态时，你可以对其使用，令其回复1点体力。,tao,basic,
+taoyuanjieyi,桃园结义,标准包,锦囊牌,普通锦囊 / 群体,出牌阶段使用。所有角色各回复1点体力。,taoyuanjieyi,trick,
+wanjianqifa,万箭齐发,标准包,锦囊牌,普通锦囊 / 群体,出牌阶段使用。除你外，每名角色需打出一张【闪】，否则受到你造成的1点伤害。,wanjianqifa,trick,
+wugufengdeng,五谷丰登,标准包,锦囊牌,普通锦囊 / 群体,出牌阶段使用。亮出等同于存活角色数的牌堆顶牌，由你开始，每名角色依次选择并获得其中一张。,wugufengdeng,trick,
+juedou,决斗,标准包,锦囊牌,普通锦囊 / 单体,出牌阶段，对一名其他角色使用。由其开始，你与其轮流打出一张【杀】；未打出者受到对方造成的1点伤害。,juedou,trick,
+guohechaiqiao,过河拆桥,标准包,锦囊牌,普通锦囊 / 单体,出牌阶段，对区域内有牌的一名其他角色使用。弃置其区域内的一张牌。,guohechaiqiao,trick,
+shunshouqianyang,顺手牵羊,标准包,锦囊牌,普通锦囊 / 单体,出牌阶段，对距离1以内且区域内有牌的一名其他角色使用。获得其区域内的一张牌。,shunshouqianyang,trick,
+wuzhongshengyou,无中生有,标准包,锦囊牌,普通锦囊 / 自用,出牌阶段，对自己使用。摸两张牌。,wuzhongshengyou,trick,
+wuxiekeji,无懈可击,标准包+军争篇,锦囊牌,普通锦囊 / 响应,在锦囊牌对目标生效前使用，抵消该锦囊牌对该目标的一次效果。,wuxiekeji,trick,
+nanmanruqin,南蛮入侵,标准包,锦囊牌,普通锦囊 / 群体,出牌阶段使用。除你外，每名角色需打出一张【杀】，否则受到你造成的1点伤害。,nanmanruqin,trick,
+jiedaosharen,借刀杀人,标准包,锦囊牌,普通锦囊 / 单体,出牌阶段，对装备武器的一名角色使用。令其对你指定的另一名角色使用一张【杀】；若其不如此做，你获得其武器。,jiedaosharen,trick,
+lebusishu,乐不思蜀,标准包,锦囊牌,延时锦囊,出牌阶段，对一名其他角色使用。置于其判定区；判定结果若不为红桃，则其跳过出牌阶段。,lebusishu,delayed_trick,
+shandian,闪电,标准包,锦囊牌,延时锦囊,出牌阶段，对自己使用。置于判定区；判定若为黑桃2~9，你受到3点雷电伤害；否则将其移动给下家。,shandian,delayed_trick,
+zhuge_liannu,诸葛连弩,标准包,装备牌,武器,攻击范围1。锁定技。出牌阶段，你使用【杀】无次数限制。,zhuge_liannu,weapon,1
+cixiong_shuanggujian,雌雄双股剑,标准包,装备牌,武器,攻击范围2。当你使用【杀】指定异性角色为目标后，可令其选择一项：弃一张手牌，或令你摸一张牌。,ci_xiong_shuang_gu_jian,weapon,2
+qinggangjian,青釭剑,标准包,装备牌,武器,攻击范围2。锁定技。你使用【杀】造成伤害时，无视目标角色的防具。,qinggangjian,weapon,2
+qinglong_yanyuedao,青龙偃月刀,标准包,装备牌,武器,攻击范围3。当你使用的【杀】被【闪】抵消后，可对同一目标再使用一张【杀】。,qinglong_yanyuedao,weapon,3
+zhangba_shemao,丈八蛇矛,标准包,装备牌,武器,攻击范围3。你可以将两张手牌当【杀】使用或打出。,zhangba_shemao,weapon,3
+guanshifu,贯石斧,标准包,装备牌,武器,攻击范围3。当你使用的【杀】被【闪】抵消后，可弃置两张牌，令此【杀】仍然造成伤害。,guanshifu,weapon,3
+fangtian_huaji,方天画戟,标准包,装备牌,武器,攻击范围4。当你使用最后的手牌【杀】时，可额外指定至多两名目标。,fangtian_huaji,weapon,4
+qilingong,麒麟弓,标准包,装备牌,武器,攻击范围5。当你使用【杀】对目标造成伤害后，可弃置其装备区里的一张坐骑牌。,qilingong,weapon,5
+hanbingjian,寒冰剑,标准包,装备牌,武器,攻击范围2。当你使用【杀】将要对目标造成伤害时，可防止此伤害，改为依次弃置其两张牌。,hanbingjian,weapon,2
+baguazhen,八卦阵,标准包,装备牌,防具,当你需要使用或打出【闪】时，可进行判定；若结果为红色，视为你使用或打出了一张【闪】。,baguazhen,armor,
+renwangdun,仁王盾,标准包,装备牌,防具,锁定技。黑色【杀】对你无效。,renwangdun,armor,
+chitu,赤兔,标准包,装备牌,-1坐骑,锁定技。你与其他角色的距离-1。,chitu,horse_minus,
+dayuan,大宛,标准包,装备牌,-1坐骑,锁定技。你与其他角色的距离-1。,dayuan,horse_minus,
+zixing,紫骍,标准包,装备牌,-1坐骑,锁定技。你与其他角色的距离-1。,zixing,horse_minus,
+dilu,的卢,标准包,装备牌,+1坐骑,锁定技。其他角色计算与你的距离+1。,dilu,horse_plus,
+juahuangfeidian,爪黄飞电,标准包,装备牌,+1坐骑,锁定技。其他角色计算与你的距离+1。,juahuangfeidian,horse_plus,
+jueying,绝影,标准包,装备牌,+1坐骑,锁定技。其他角色计算与你的距离+1。,jueying,horse_plus,
+huosha,火杀,军争篇,基本牌,火焰杀,出牌阶段，对攻击范围内的一名角色使用。目标需打出一张【闪】，否则受到你造成的1点火焰伤害。,huosha,basic,
+leisha,雷杀,军争篇,基本牌,雷电杀,出牌阶段，对攻击范围内的一名角色使用。目标需打出一张【闪】，否则受到你造成的1点雷电伤害。,leisha,basic,
+jiu,酒,军争篇,基本牌,状态牌,出牌阶段，对自己使用。本回合下一张【杀】造成的伤害+1；当你处于濒死状态时，也可以使用【酒】令自己回复1点体力。,jiu,basic,
+huogong,火攻,军争篇,锦囊牌,普通锦囊 / 单体,出牌阶段，对一名有手牌的角色使用。其展示一张手牌；你弃置一张同花色手牌，则其受到你造成的1点火焰伤害。,huogong,trick,
+tiesuolianhuan,铁索连环,军争篇,锦囊牌,普通锦囊 / 单体,出牌阶段，选择一至两名角色，令这些角色横置或重置；你也可以重铸此牌。,tiesuolianhuan,trick,
+bingliangcunduan,兵粮寸断,军争篇,锦囊牌,延时锦囊,出牌阶段，对距离1以内的一名其他角色使用。置于其判定区；判定结果若不为梅花，则其跳过摸牌阶段。,bingliangcunduan,delayed_trick,
+gudingdao,古锭刀,军争篇,装备牌,武器,攻击范围2。锁定技。当你使用【杀】对没有手牌的角色造成伤害时，此伤害+1。,gudingdao,weapon,2
+zhuque_yushan,朱雀羽扇,军争篇,装备牌,武器,攻击范围4。你可以将普通【杀】当火【杀】使用。,zhuque_yushan,weapon,4
+tengjia,藤甲,军争篇,装备牌,防具,锁定技。普通【杀】、【南蛮入侵】和【万箭齐发】对你无效；你受到的火焰伤害+1。,tengjia,armor,
+baiyinshizi,白银狮子,军争篇,装备牌,防具,锁定技。你每次受到的伤害最多为1点；当你失去装备区里的【白银狮子】后，若你已受伤，则回复1点体力。,baiyinshizi,armor,
+hualiu,骅骝,军争篇,装备牌,+1坐骑,锁定技。其他角色计算与你的距离+1。,hualiu,horse_plus,

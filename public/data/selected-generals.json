@@ -1,0 +1,900 @@
+[
+  {
+    "id": "general_001",
+    "name": "曹操",
+    "pack": "基本版",
+    "faction": "魏",
+    "maxHp": 4,
+    "image": {
+      "sourceName": "曹操",
+      "fileName": "曹操.png",
+      "path": "/assets/generals/曹操.png",
+      "aliasOf": null
+    },
+    "skills": [
+      {
+        "name": "奸雄",
+        "description": "受到伤害后，可获得造成此伤害的牌。"
+      },
+      {
+        "name": "护驾",
+        "description": "主公技。需要使用或打出闪时，可令其他魏势力角色替你打出一张闪。"
+      }
+    ]
+  },
+  {
+    "id": "general_002",
+    "name": "司马懿",
+    "pack": "基本版",
+    "faction": "魏",
+    "maxHp": 3,
+    "image": {
+      "sourceName": "司马懿",
+      "fileName": "司马懿.png",
+      "path": "/assets/generals/司马懿.png",
+      "aliasOf": null
+    },
+    "skills": [
+      {
+        "name": "反馈",
+        "description": "受到伤害后，可获得伤害来源的一张牌。"
+      },
+      {
+        "name": "鬼才",
+        "description": "任意角色的判定牌生效前，可打出一张手牌替换之。"
+      }
+    ]
+  },
+  {
+    "id": "general_003",
+    "name": "夏侯惇",
+    "pack": "基本版",
+    "faction": "魏",
+    "maxHp": 4,
+    "image": {
+      "sourceName": "夏侯惇",
+      "fileName": "夏侯惇.png",
+      "path": "/assets/generals/夏侯惇.png",
+      "aliasOf": null
+    },
+    "skills": [
+      {
+        "name": "刚烈",
+        "description": "受到伤害后可判定，若结果不为红桃，则伤害来源二选一：弃两张手牌，或受到你造成的1点伤害。"
+      }
+    ]
+  },
+  {
+    "id": "general_004",
+    "name": "张辽",
+    "pack": "基本版",
+    "faction": "魏",
+    "maxHp": 4,
+    "image": {
+      "sourceName": "张辽",
+      "fileName": "张辽.png",
+      "path": "/assets/generals/张辽.png",
+      "aliasOf": null
+    },
+    "skills": [
+      {
+        "name": "突袭",
+        "description": "摸牌阶段，可放弃正常摸牌，改为获得至多两名其他角色各一张手牌。"
+      }
+    ]
+  },
+  {
+    "id": "general_005",
+    "name": "许褚",
+    "pack": "基本版",
+    "faction": "魏",
+    "maxHp": 4,
+    "image": {
+      "sourceName": "许诸",
+      "fileName": "许诸.png",
+      "path": "/assets/generals/许诸.png",
+      "aliasOf": "许褚"
+    },
+    "skills": [
+      {
+        "name": "裸衣",
+        "description": "摸牌阶段可少摸一张牌，本回合你使用的杀或决斗造成的伤害+1。"
+      }
+    ]
+  },
+  {
+    "id": "general_006",
+    "name": "郭嘉",
+    "pack": "基本版",
+    "faction": "魏",
+    "maxHp": 3,
+    "image": {
+      "sourceName": "郭嘉",
+      "fileName": "郭嘉.png",
+      "path": "/assets/generals/郭嘉.png",
+      "aliasOf": null
+    },
+    "skills": [
+      {
+        "name": "天妒",
+        "description": "你的判定牌生效后，可获得该牌。"
+      },
+      {
+        "name": "遗计",
+        "description": "每受到1点伤害，可观看牌堆顶两张牌，并任意分配给角色。"
+      }
+    ]
+  },
+  {
+    "id": "general_007",
+    "name": "甄姬",
+    "pack": "基本版",
+    "faction": "魏",
+    "maxHp": 3,
+    "image": {
+      "sourceName": "甄姬",
+      "fileName": "甄姬.png",
+      "path": "/assets/generals/甄姬.png",
+      "aliasOf": null
+    },
+    "skills": [
+      {
+        "name": "倾国",
+        "description": "可将一张黑色手牌当闪使用或打出。"
+      },
+      {
+        "name": "洛神",
+        "description": "准备阶段可连续判定，黑色判定牌生效后获得之，直到出现红色为止。"
+      }
+    ]
+  },
+  {
+    "id": "general_008",
+    "name": "刘备",
+    "pack": "基本版",
+    "faction": "蜀",
+    "maxHp": 4,
+    "image": {
+      "sourceName": "刘备",
+      "fileName": "刘备.png",
+      "path": "/assets/generals/刘备.png",
+      "aliasOf": null
+    },
+    "skills": [
+      {
+        "name": "仁德",
+        "description": "出牌阶段可将任意张手牌交给其他角色；本阶段首次累计给出两张或更多牌时，回复1点体力。"
+      },
+      {
+        "name": "激将",
+        "description": "主公技。需要使用或打出杀时，可令其他蜀势力角色替你打出一张杀。"
+      }
+    ]
+  },
+  {
+    "id": "general_009",
+    "name": "关羽",
+    "pack": "基本版",
+    "faction": "蜀",
+    "maxHp": 4,
+    "image": {
+      "sourceName": "关羽",
+      "fileName": "关羽.png",
+      "path": "/assets/generals/关羽.png",
+      "aliasOf": null
+    },
+    "skills": [
+      {
+        "name": "武圣",
+        "description": "可将一张红色牌当杀使用或打出。"
+      }
+    ]
+  },
+  {
+    "id": "general_010",
+    "name": "张飞",
+    "pack": "基本版",
+    "faction": "蜀",
+    "maxHp": 4,
+    "image": {
+      "sourceName": "张飞",
+      "fileName": "张飞.png",
+      "path": "/assets/generals/张飞.png",
+      "aliasOf": null
+    },
+    "skills": [
+      {
+        "name": "咆哮",
+        "description": "锁定技。出牌阶段使用杀无次数限制。"
+      }
+    ]
+  },
+  {
+    "id": "general_011",
+    "name": "诸葛亮",
+    "pack": "基本版",
+    "faction": "蜀",
+    "maxHp": 3,
+    "image": {
+      "sourceName": "诸葛亮",
+      "fileName": "诸葛亮.png",
+      "path": "/assets/generals/诸葛亮.png",
+      "aliasOf": null
+    },
+    "skills": [
+      {
+        "name": "观星",
+        "description": "准备阶段观看牌堆顶X张牌并按任意顺序放回牌堆顶或牌堆底，X为存活角色数且最多为5。"
+      },
+      {
+        "name": "空城",
+        "description": "锁定技。若你没有手牌，不能成为杀或决斗的目标。"
+      }
+    ]
+  },
+  {
+    "id": "general_012",
+    "name": "赵云",
+    "pack": "基本版",
+    "faction": "蜀",
+    "maxHp": 4,
+    "image": {
+      "sourceName": "赵云",
+      "fileName": "赵云.png",
+      "path": "/assets/generals/赵云.png",
+      "aliasOf": null
+    },
+    "skills": [
+      {
+        "name": "龙胆",
+        "description": "可将杀当闪、闪当杀使用或打出。"
+      }
+    ]
+  },
+  {
+    "id": "general_013",
+    "name": "马超",
+    "pack": "基本版",
+    "faction": "蜀",
+    "maxHp": 4,
+    "image": {
+      "sourceName": "马超",
+      "fileName": "马超.png",
+      "path": "/assets/generals/马超.png",
+      "aliasOf": null
+    },
+    "skills": [
+      {
+        "name": "马术",
+        "description": "锁定技。你与其他角色的距离-1。"
+      },
+      {
+        "name": "铁骑",
+        "description": "使用杀指定目标后可判定，若为红色，该角色不能使用闪响应此杀。"
+      }
+    ]
+  },
+  {
+    "id": "general_014",
+    "name": "黄月英",
+    "pack": "基本版",
+    "faction": "蜀",
+    "maxHp": 3,
+    "image": {
+      "sourceName": "黄月英",
+      "fileName": "黄月英.png",
+      "path": "/assets/generals/黄月英.png",
+      "aliasOf": null
+    },
+    "skills": [
+      {
+        "name": "集智",
+        "description": "使用一张非延时锦囊后，可摸一张牌。"
+      },
+      {
+        "name": "奇才",
+        "description": "锁定技。你使用锦囊牌无距离限制。"
+      }
+    ]
+  },
+  {
+    "id": "general_015",
+    "name": "孙权",
+    "pack": "基本版",
+    "faction": "吴",
+    "maxHp": 4,
+    "image": {
+      "sourceName": "孙权",
+      "fileName": "孙权.png",
+      "path": "/assets/generals/孙权.png",
+      "aliasOf": null
+    },
+    "skills": [
+      {
+        "name": "制衡",
+        "description": "出牌阶段限一次，可弃置任意张牌并摸等量的牌。"
+      },
+      {
+        "name": "救援",
+        "description": "主公技。锁定技。其他吴势力角色对你使用桃时，你额外回复1点体力。"
+      }
+    ]
+  },
+  {
+    "id": "general_016",
+    "name": "甘宁",
+    "pack": "基本版",
+    "faction": "吴",
+    "maxHp": 4,
+    "image": {
+      "sourceName": "甘宁",
+      "fileName": "甘宁.png",
+      "path": "/assets/generals/甘宁.png",
+      "aliasOf": null
+    },
+    "skills": [
+      {
+        "name": "奇袭",
+        "description": "可将一张黑色牌当过河拆桥使用。"
+      }
+    ]
+  },
+  {
+    "id": "general_017",
+    "name": "吕蒙",
+    "pack": "基本版",
+    "faction": "吴",
+    "maxHp": 4,
+    "image": {
+      "sourceName": "吕蒙",
+      "fileName": "吕蒙.png",
+      "path": "/assets/generals/吕蒙.png",
+      "aliasOf": null
+    },
+    "skills": [
+      {
+        "name": "克己",
+        "description": "若你本回合未使用或打出过杀，可跳过弃牌阶段。"
+      }
+    ]
+  },
+  {
+    "id": "general_018",
+    "name": "黄盖",
+    "pack": "基本版",
+    "faction": "吴",
+    "maxHp": 4,
+    "image": {
+      "sourceName": "黄盖",
+      "fileName": "黄盖.png",
+      "path": "/assets/generals/黄盖.png",
+      "aliasOf": null
+    },
+    "skills": [
+      {
+        "name": "苦肉",
+        "description": "出牌阶段可失去1点体力，然后摸两张牌。"
+      }
+    ]
+  },
+  {
+    "id": "general_019",
+    "name": "周瑜",
+    "pack": "基本版",
+    "faction": "吴",
+    "maxHp": 3,
+    "image": {
+      "sourceName": "周瑜",
+      "fileName": "周瑜.png",
+      "path": "/assets/generals/周瑜.png",
+      "aliasOf": null
+    },
+    "skills": [
+      {
+        "name": "英姿",
+        "description": "摸牌阶段可额外摸一张牌。"
+      },
+      {
+        "name": "反间",
+        "description": "出牌阶段限一次，令一名其他角色声明花色并获得你的一张手牌；若花色不符，你对其造成1点伤害。"
+      }
+    ]
+  },
+  {
+    "id": "general_020",
+    "name": "大乔",
+    "pack": "基本版",
+    "faction": "吴",
+    "maxHp": 3,
+    "image": {
+      "sourceName": "大乔",
+      "fileName": "大乔.png",
+      "path": "/assets/generals/大乔.png",
+      "aliasOf": null
+    },
+    "skills": [
+      {
+        "name": "国色",
+        "description": "可将一张方片牌当乐不思蜀使用。"
+      },
+      {
+        "name": "流离",
+        "description": "成为杀的目标时，可弃一张牌并将此杀转移给你攻击范围内的另一名其他角色。"
+      }
+    ]
+  },
+  {
+    "id": "general_021",
+    "name": "陆逊",
+    "pack": "基本版",
+    "faction": "吴",
+    "maxHp": 3,
+    "image": {
+      "sourceName": "陆逊",
+      "fileName": "陆逊.png",
+      "path": "/assets/generals/陆逊.png",
+      "aliasOf": null
+    },
+    "skills": [
+      {
+        "name": "谦逊",
+        "description": "锁定技。你不能成为顺手牵羊或乐不思蜀的目标。"
+      },
+      {
+        "name": "连营",
+        "description": "失去最后的手牌后，可摸一张牌。"
+      }
+    ]
+  },
+  {
+    "id": "general_022",
+    "name": "孙尚香",
+    "pack": "基本版",
+    "faction": "吴",
+    "maxHp": 3,
+    "image": {
+      "sourceName": "孙尚香",
+      "fileName": "孙尚香.png",
+      "path": "/assets/generals/孙尚香.png",
+      "aliasOf": null
+    },
+    "skills": [
+      {
+        "name": "结姻",
+        "description": "出牌阶段限一次，可弃两张手牌并令一名已受伤男性角色与你各回复1点体力。"
+      },
+      {
+        "name": "枭姬",
+        "description": "失去装备区的一张牌后，可摸两张牌。"
+      }
+    ]
+  },
+  {
+    "id": "general_023",
+    "name": "华佗",
+    "pack": "基本版",
+    "faction": "群",
+    "maxHp": 3,
+    "image": {
+      "sourceName": "华佗",
+      "fileName": "华佗.png",
+      "path": "/assets/generals/华佗.png",
+      "aliasOf": null
+    },
+    "skills": [
+      {
+        "name": "急救",
+        "description": "你的回合外，可将一张红色牌当桃使用。"
+      },
+      {
+        "name": "青囊",
+        "description": "出牌阶段限一次，可弃一张手牌并令一名已受伤角色回复1点体力。"
+      }
+    ]
+  },
+  {
+    "id": "general_024",
+    "name": "吕布",
+    "pack": "基本版",
+    "faction": "群",
+    "maxHp": 4,
+    "image": {
+      "sourceName": "吕布",
+      "fileName": "吕布.png",
+      "path": "/assets/generals/吕布.png",
+      "aliasOf": null
+    },
+    "skills": [
+      {
+        "name": "无双",
+        "description": "锁定技。你使用的杀需要两张闪响应；与你进行决斗的角色每次需打出两张杀。"
+      }
+    ]
+  },
+  {
+    "id": "general_025",
+    "name": "貂蝉",
+    "pack": "基本版",
+    "faction": "群",
+    "maxHp": 3,
+    "image": {
+      "sourceName": "貂蝉",
+      "fileName": "貂蝉.png",
+      "path": "/assets/generals/貂蝉.png",
+      "aliasOf": null
+    },
+    "skills": [
+      {
+        "name": "离间",
+        "description": "出牌阶段限一次，可弃一张牌并令两名其他男性角色进行一次决斗。"
+      },
+      {
+        "name": "闭月",
+        "description": "结束阶段可摸一张牌。"
+      }
+    ]
+  },
+  {
+    "id": "general_026",
+    "name": "夏侯渊",
+    "pack": "风",
+    "faction": "魏",
+    "maxHp": 4,
+    "image": {
+      "sourceName": "夏侯渊",
+      "fileName": "夏侯渊.png",
+      "path": "/assets/generals/夏侯渊.png",
+      "aliasOf": null
+    },
+    "skills": [
+      {
+        "name": "神速",
+        "description": "可选择一至两项：跳过判定阶段和摸牌阶段；或跳过出牌阶段并弃一张装备牌。每选一项，视为使用一张杀。"
+      }
+    ]
+  },
+  {
+    "id": "general_027",
+    "name": "曹仁",
+    "pack": "风",
+    "faction": "魏",
+    "maxHp": 4,
+    "image": {
+      "sourceName": "曹仁",
+      "fileName": "曹仁.png",
+      "path": "/assets/generals/曹仁.png",
+      "aliasOf": null
+    },
+    "skills": [
+      {
+        "name": "据守",
+        "description": "结束阶段可摸三张牌，然后将武将牌翻面。"
+      }
+    ]
+  },
+  {
+    "id": "general_028",
+    "name": "黄忠",
+    "pack": "风",
+    "faction": "蜀",
+    "maxHp": 4,
+    "image": {
+      "sourceName": "黄忠",
+      "fileName": "黄忠.png",
+      "path": "/assets/generals/黄忠.png",
+      "aliasOf": null
+    },
+    "skills": [
+      {
+        "name": "烈弓",
+        "description": "你使用杀指定目标后，若其手牌数不少于你的体力值，或不大于你的攻击范围，则其不能使用闪响应此杀。"
+      }
+    ]
+  },
+  {
+    "id": "general_029",
+    "name": "魏延",
+    "pack": "风",
+    "faction": "蜀",
+    "maxHp": 4,
+    "image": {
+      "sourceName": "魏延",
+      "fileName": "魏延.png",
+      "path": "/assets/generals/魏延.png",
+      "aliasOf": null
+    },
+    "skills": [
+      {
+        "name": "狂骨",
+        "description": "你对距离1以内的角色造成1点伤害后，可回复1点体力。"
+      }
+    ]
+  },
+  {
+    "id": "general_030",
+    "name": "小乔",
+    "pack": "风",
+    "faction": "吴",
+    "maxHp": 3,
+    "image": {
+      "sourceName": "小乔",
+      "fileName": "小乔.png",
+      "path": "/assets/generals/小乔.png",
+      "aliasOf": null
+    },
+    "skills": [
+      {
+        "name": "天香",
+        "description": "受到伤害时，可弃一张红桃手牌并选择一名其他角色，将此伤害转移给其，然后该角色摸X张牌，X为其已损失体力值。"
+      },
+      {
+        "name": "红颜",
+        "description": "锁定技。你的黑桃牌均视为红桃牌。"
+      }
+    ]
+  },
+  {
+    "id": "general_031",
+    "name": "周泰",
+    "pack": "风",
+    "faction": "吴",
+    "maxHp": 4,
+    "image": {
+      "sourceName": "周泰",
+      "fileName": "周泰.png",
+      "path": "/assets/generals/周泰.png",
+      "aliasOf": null
+    },
+    "skills": [
+      {
+        "name": "不屈",
+        "description": "当你处于濒死时，展示牌堆顶一张牌并置于武将牌上称为“创”；只要这些“创”的点数各不相同，你便不会死亡。"
+      }
+    ]
+  },
+  {
+    "id": "general_032",
+    "name": "张角",
+    "pack": "风",
+    "faction": "群",
+    "maxHp": 3,
+    "image": {
+      "sourceName": "张角",
+      "fileName": "张角.png",
+      "path": "/assets/generals/张角.png",
+      "aliasOf": null
+    },
+    "skills": [
+      {
+        "name": "雷击",
+        "description": "使用或打出闪后，可令一名角色判定；若为黑桃，对其造成2点雷电伤害。"
+      },
+      {
+        "name": "鬼道",
+        "description": "任意角色的判定牌生效前，可打出一张黑色牌替换之。"
+      },
+      {
+        "name": "黄天",
+        "description": "主公技。其他群势力角色出牌阶段限一次，可交给你一张闪或闪电。"
+      }
+    ]
+  },
+  {
+    "id": "general_033",
+    "name": "典韦",
+    "pack": "火",
+    "faction": "魏",
+    "maxHp": 4,
+    "image": {
+      "sourceName": "典韦",
+      "fileName": "典韦.png",
+      "path": "/assets/generals/典韦.png",
+      "aliasOf": null
+    },
+    "skills": [
+      {
+        "name": "强袭",
+        "description": "出牌阶段限一次，可弃一张武器牌或失去1点体力，对攻击范围内一名角色造成1点伤害。"
+      }
+    ]
+  },
+  {
+    "id": "general_034",
+    "name": "荀彧",
+    "pack": "火",
+    "faction": "魏",
+    "maxHp": 3,
+    "image": {
+      "sourceName": "荀彧",
+      "fileName": "荀彧.png",
+      "path": "/assets/generals/荀彧.png",
+      "aliasOf": null
+    },
+    "skills": [
+      {
+        "name": "驱虎",
+        "description": "出牌阶段限一次，可与一名体力值大于你的角色拼点；若你赢，令其对其攻击范围内由你指定的另一名角色使用一张杀，否则其对你造成1点伤害。"
+      },
+      {
+        "name": "节命",
+        "description": "每受到1点伤害，可令一名角色将手牌摸至其体力上限。"
+      }
+    ]
+  },
+  {
+    "id": "general_035",
+    "name": "庞统",
+    "pack": "火",
+    "faction": "蜀",
+    "maxHp": 3,
+    "image": {
+      "sourceName": "庞统",
+      "fileName": "庞统.png",
+      "path": "/assets/generals/庞统.png",
+      "aliasOf": null
+    },
+    "skills": [
+      {
+        "name": "连环",
+        "description": "可将一张梅花手牌当铁索连环使用或重铸。"
+      },
+      {
+        "name": "涅槃",
+        "description": "限定技。处于濒死时，可弃置区域内所有牌并重置状态，然后摸三张牌并将体力回复至3点。"
+      }
+    ]
+  },
+  {
+    "id": "general_036",
+    "name": "太史慈",
+    "pack": "火",
+    "faction": "吴",
+    "maxHp": 4,
+    "image": {
+      "sourceName": "太史慈",
+      "fileName": "太史慈.png",
+      "path": "/assets/generals/太史慈.png",
+      "aliasOf": null
+    },
+    "skills": [
+      {
+        "name": "天义",
+        "description": "出牌阶段限一次，可与一名角色拼点。若你赢，本回合你使用杀无距离限制、可额外指定一个目标且可多使用一张杀；若你没赢，本回合不能使用杀。"
+      }
+    ]
+  },
+  {
+    "id": "general_037",
+    "name": "袁绍",
+    "pack": "火",
+    "faction": "群",
+    "maxHp": 4,
+    "image": {
+      "sourceName": "袁绍",
+      "fileName": "袁绍.png",
+      "path": "/assets/generals/袁绍.png",
+      "aliasOf": null
+    },
+    "skills": [
+      {
+        "name": "乱击",
+        "description": "可将两张相同花色的手牌当万箭齐发使用。"
+      },
+      {
+        "name": "血裔",
+        "description": "主公技。锁定技。其他群势力角色每存在一名，你的手牌上限便+2。"
+      }
+    ]
+  },
+  {
+    "id": "general_038",
+    "name": "颜良文丑",
+    "pack": "火",
+    "faction": "群",
+    "maxHp": 4,
+    "image": {
+      "sourceName": "颜良文丑",
+      "fileName": "颜良文丑.png",
+      "path": "/assets/generals/颜良文丑.png",
+      "aliasOf": null
+    },
+    "skills": [
+      {
+        "name": "双雄",
+        "description": "摸牌阶段可放弃摸牌并改为判定，获得判定牌；本回合可将与该判定牌颜色不同的一张手牌当决斗使用。"
+      }
+    ]
+  },
+  {
+    "id": "general_039",
+    "name": "庞德",
+    "pack": "火",
+    "faction": "群",
+    "maxHp": 4,
+    "image": {
+      "sourceName": "庞德",
+      "fileName": "庞德.png",
+      "path": "/assets/generals/庞德.png",
+      "aliasOf": null
+    },
+    "skills": [
+      {
+        "name": "马术",
+        "description": "锁定技。你与其他角色的距离-1。"
+      },
+      {
+        "name": "猛进",
+        "description": "使用的杀被闪抵消后，可弃置该目标的一张牌。"
+      }
+    ]
+  },
+  {
+    "id": "general_040",
+    "name": "张郃",
+    "pack": "山",
+    "faction": "魏",
+    "maxHp": 4,
+    "image": {
+      "sourceName": "张郃",
+      "fileName": "张郃.png",
+      "path": "/assets/generals/张郃.png",
+      "aliasOf": null
+    },
+    "skills": [
+      {
+        "name": "巧变",
+        "description": "可弃一张手牌并跳过一个阶段。若跳过摸牌阶段，可获得至多两名其他角色各一张手牌；若跳过出牌阶段，可移动场上的一张牌。"
+      }
+    ]
+  },
+  {
+    "id": "general_041",
+    "name": "刘禅",
+    "pack": "山",
+    "faction": "蜀",
+    "maxHp": 3,
+    "image": {
+      "sourceName": "刘婵",
+      "fileName": "刘婵.png",
+      "path": "/assets/generals/刘婵.png",
+      "aliasOf": "刘禅"
+    },
+    "skills": [
+      {
+        "name": "享乐",
+        "description": "锁定技。成为杀的目标后，使用者须弃一张基本牌，否则此杀对你无效。"
+      },
+      {
+        "name": "放权",
+        "description": "可跳过出牌阶段；若如此做，回合结束时可弃一张手牌并令一名其他角色立即获得一个额外回合。"
+      },
+      {
+        "name": "若愚",
+        "description": "主公技，觉醒技。准备阶段，若你的体力值为全场最少，你增加1点体力上限、回复1点体力，并获得“激将”。"
+      }
+    ]
+  },
+  {
+    "id": "general_042",
+    "name": "蔡文姬",
+    "pack": "山",
+    "faction": "群",
+    "maxHp": 3,
+    "image": {
+      "sourceName": "蔡文姬",
+      "fileName": "蔡文姬.png",
+      "path": "/assets/generals/蔡文姬.png",
+      "aliasOf": null
+    },
+    "skills": [
+      {
+        "name": "悲歌",
+        "description": "一名角色每受到杀造成的伤害后，你可弃一张牌，令其判定：红桃回复1点体力，方片摸两张牌，梅花伤害来源弃两张牌，黑桃伤害来源翻面。"
+      },
+      {
+        "name": "断肠",
+        "description": "锁定技。你死亡时，杀死你的角色失去其所有武将技能。"
+      }
+    ]
+  }
+]
