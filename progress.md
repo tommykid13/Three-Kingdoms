@@ -127,6 +127,7 @@ Original prompt: 我想制作单人三国杀游戏，8人局，游戏卡牌和�
 - System Edge smoke tests passed for the initial v1.1 panel before the security revision; later replaced frontend key entry with a Cloudflare Pages Function proxy.
 - Revised v1.1 external AI security: removed all frontend API key input/storage/direct supplier calls, added Cloudflare Pages Function `/api/ai-decision`, and made missing server secrets/API failures return a fallback response consumed by the local AI path.
 - Verified `npm run build`; Wrangler Pages local dev returns fallback JSON when secrets are absent; Edge smoke confirmed no password/key input in the AI settings panel and no console errors during missing-secret fallback.
+- Enlarged setup general selection cards for better skill readability: wider 5-card grid on large screens, larger selected-general preview, and visible skill chips under each candidate. Verified with `npm run build` and system Edge screenshots at 2048px.
 - Latest update:
   - Added chainable `无懈可击` resolution for targeted tricks, delayed trick effects, and mass-trick per-target effects.
   - Each `无懈可击` now flips whether the original trick is nullified, so chains like player `无懈` -> AI `反无懈` -> ally `再无懈` can resolve correctly.

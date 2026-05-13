@@ -747,6 +747,15 @@ const SetupScreen = ({
               <small>
                 {general.faction} · {general.maxHp}
               </small>
+              <div className="setup-general-skills" aria-label={`${general.name}技能`}>
+                {general.skills.length > 0
+                  ? general.skills.map((skill) => (
+                      <em key={`${general.id}-${skill.name}`} title={skill.description}>
+                        {skill.name}
+                      </em>
+                    ))
+                  : <em>无技能</em>}
+              </div>
             </button>
           ))}
         </div>
