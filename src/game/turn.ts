@@ -49,6 +49,7 @@ const weaponRanges: Record<string, number> = {
 const armorIds = new Set(["baguazhen", "renwangdun", "tengjia", "baiyinshizi"]);
 const offensiveMountIds = new Set(["chitu", "dayuan", "zixing"]);
 const defensiveMountIds = new Set(["dilu", "juahuangfeidian", "jueying", "hualiu"]);
+export const GAME_LOG_LIMIT = 120;
 
 export type CardPlayInfo = {
   canPlay: boolean;
@@ -217,7 +218,7 @@ const cloneGame = (game: GameState): GameState => ({
 });
 
 const appendLog = (game: GameState, message: string) => {
-  game.log = [message, ...game.log].slice(0, 18);
+  game.log = [message, ...game.log].slice(0, GAME_LOG_LIMIT);
 };
 
 const setLastEffect = (
@@ -418,6 +419,56 @@ const discardCards = (game: GameState, cards: DeckInstance[]) => {
   game.piles.discard.push(...cards);
 };
 
+const createRng = (seed: number) => {
+  let value = seed >>> 0;
+  return () => {
+    value = (value * 1664525 + 1013904223) >>> 0;
+    return value / 2 ** 32;
+  };
+};
+
+const shuffleCards = <T,>(items: T[], seed: number): T[] => {
+  const rng = createRng(seed);
+  const result = [...items];
+  for (let index = result.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(rng() * (index + 1));
+    [result[index], result[swapIndex]] = [result[swapIndex], result[index]];
+  }
+  return result;
+};
+
+const recycleDiscardIntoDraw = (game: GameState) => {
+  if (game.piles.draw.length > 0 || game.piles.discard.length === 0) {
+    return false;
+  }
+
+  const seed =
+    game.seed +
+    game.turn.round * 997 +
+    game.turn.phaseStep * 131 +
+    game.piles.discard.length;
+  const recycled = shuffleCards(game.piles.discard, seed);
+  game.piles.discard = [];
+  game.piles.draw.push(...recycled);
+  appendLog(game, `摸牌堆为空，洗入弃牌堆 ${recycled.length} 张作为新的摸牌堆。`);
+  return true;
+};
+
+const drawTopCards = (game: GameState, count: number) => {
+  const cards: DeckInstance[] = [];
+  while (cards.length < count) {
+    if (game.piles.draw.length === 0 && !recycleDiscardIntoDraw(game)) {
+      break;
+    }
+    const card = game.piles.draw.shift();
+    if (!card) {
+      break;
+    }
+    cards.push(card);
+  }
+  return cards;
+};
+
 const takeCardFromDiscard = (game: GameState, card: DeckInstance) => {
   const index = game.piles.discard.findIndex(
     (item) => item.instance_id === card.instance_id,
@@ -430,7 +481,7 @@ const takeCardFromDiscard = (game: GameState, card: DeckInstance) => {
 };
 
 const drawFromPile = (game: GameState, seat: Seat, count: number) => {
-  const cards = game.piles.draw.splice(0, count);
+  const cards = drawTopCards(game, count);
   seat.hand.push(...cards);
   appendLog(game, `${seat.general.name} 摸 ${cards.length} 张牌。`);
 };
@@ -1028,6 +1079,10 @@ const continueDamagedSeatSkills = (
     if (skillName === "遗计" && hasSkill(targetSeat, "遗计")) {
       const drawCount = Math.max(1, context.amount) * 2;
       const validTargetIds = game.seats.filter((seat) => seat.alive).map((seat) => seat.id);
+      if (validTargetIds.length === 0) {
+        appendLog(game, `${targetSeat.general.name} 无法发动【遗计】，场上没有存活角色。`);
+        continue;
+      }
       if (targetSeat.controller === "human") {
         game.pendingAction = {
           type: "yiji_response",
@@ -1040,8 +1095,21 @@ const continueDamagedSeatSkills = (
         appendLog(game, game.pendingAction.message);
         return;
       }
-      drawFromPile(game, targetSeat, drawCount);
-      appendLog(game, `${targetSeat.general.name} 发动【遗计】，先将 ${drawCount} 张牌分配给自己。`);
+      const aliveCount = game.seats.filter((item) => item.alive).length;
+      const recipient =
+        game.seats
+          .filter((seat) => validTargetIds.includes(seat.id))
+          .sort((a, b) => {
+            const rankDelta =
+              roleEnemyRank(targetSeat.role, a.role, aliveCount) -
+              roleEnemyRank(targetSeat.role, b.role, aliveCount);
+            if (rankDelta !== 0) return rankDelta;
+            return a.hand.length - b.hand.length;
+          })[0] ?? null;
+      if (recipient) {
+        drawFromPile(game, recipient, drawCount);
+        appendLog(game, `${targetSeat.general.name} 发动【遗计】，令 ${recipient.general.name} 获得 ${drawCount} 张牌。`);
+      }
     }
 
     if (skillName === "节命" && hasSkill(targetSeat, "节命")) {
@@ -2078,7 +2146,7 @@ const equipCard = (game: GameState, seat: Seat, card: DeckInstance) => {
 };
 
 const drawJudgeCard = (game: GameState) => {
-  return game.piles.draw.shift() ?? null;
+  return drawTopCards(game, 1)[0] ?? null;
 };
 
 const canUseJudgeReplacementCard = (seat: Seat, card: DeckInstance) =>
@@ -3620,7 +3688,7 @@ const resolveInstantTrick = (game: GameState, actor: Seat, card: DeckInstance) =
     const aliveIds = aliveSeatIdsInOrder(game);
     const start = aliveIds.indexOf(actor.id);
     const ordered = [...aliveIds.slice(start), ...aliveIds.slice(0, start)];
-    const revealed = game.piles.draw.splice(0, ordered.length);
+    const revealed = drawTopCards(game, ordered.length);
     const message = `${actor.general.name} 使用${formatCard(card)}，亮出 ${revealed.length} 张牌并依次选择。`;
     appendLog(game, message);
     setLastEffect(game, actor, card, message, undefined, "五谷");
@@ -3730,12 +3798,13 @@ const continuePreparePhaseSkills = (
 
     if (skillName === "观星" && hasSkill(seat, "观星")) {
       if (seat.controller === "human") {
+        recycleDiscardIntoDraw(game);
         const count = Math.min(5, game.seats.filter((item) => item.alive).length, game.piles.draw.length);
         if (count <= 0) {
           appendLog(game, `${seat.general.name} 发动【观星】，但牌堆为空。`);
           continue;
         }
-        const viewedCards = game.piles.draw.splice(0, count);
+        const viewedCards = drawTopCards(game, count);
         game.pendingAction = {
           type: "guanxing_response",
           seatId: seat.id,
@@ -3866,13 +3935,14 @@ const resolveGuanxing = (game: GameState, seat: Seat) => {
     return;
   }
 
+  recycleDiscardIntoDraw(game);
   const count = Math.min(5, game.seats.filter((item) => item.alive).length, game.piles.draw.length);
   if (count <= 0) {
     appendLog(game, `${seat.general.name} 发动【观星】，但牌堆为空。`);
     return;
   }
 
-  const viewed = game.piles.draw.splice(0, count);
+  const viewed = drawTopCards(game, count);
   const priority = (card: DeckInstance) => {
     if (seat.hp < seat.maxHp && isTao(card)) return 0;
     if (isSha(card) || card.card_id === "juedou") return 1;
@@ -3917,7 +3987,7 @@ const continueEndPhaseSkills = (
       continue;
     }
 
-    if (seat.controller === "human") {
+    if (seat.controller === "human" && skillName !== "闭月") {
       game.pendingAction = {
         type: "end_skill_response",
         seatId: seat.id,
@@ -5355,15 +5425,6 @@ const resolveDiscardOverflow = (game: GameState, seat: Seat) => {
 
 const resolveDiscardPhaseNormally = (game: GameState, seat: Seat) => {
   if (hasSkill(seat, "克己") && !game.turn.shaPlayed) {
-    if (seat.controller === "human") {
-      game.pendingAction = {
-        type: "keji_response",
-        seatId: seat.id,
-        message: `${seat.general.name} 本回合未使用【杀】，可以发动【克己】跳过弃牌阶段。`,
-      };
-      appendLog(game, game.pendingAction.message);
-      return;
-    }
     appendLog(game, `${seat.general.name} 发动【克己】，跳过弃牌阶段。`);
     advanceFromDiscardToEnd(game);
     return;
@@ -7437,7 +7498,7 @@ export const advanceGame = (source: GameState): GameState => {
 export const setPaused = (source: GameState, paused: boolean): GameState => ({
   ...source,
   paused,
-  log: [`AI 自动推进${paused ? "已暂停" : "已继续"}。`, ...source.log].slice(0, 18),
+  log: [`AI 自动推进${paused ? "已暂停" : "已继续"}。`, ...source.log].slice(0, GAME_LOG_LIMIT),
 });
 
 export const getVisibleRole = (seat: Seat) => (seat.roleVisible ? seat.role : "暗置");
@@ -7469,7 +7530,7 @@ export const summarizeState = (game: GameState) => ({
   pendingAction: game.pendingAction,
   winner: game.winner,
   lastEffect: game.lastEffect,
-  log: game.log.slice(0, 8),
+  log: game.log.slice(0, 30),
   turnFlags: {
     shaPlayed: game.turn.shaPlayed,
     jiuUsed: game.turn.jiuUsed,

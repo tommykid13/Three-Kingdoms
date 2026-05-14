@@ -15,6 +15,7 @@ import {
   confirmDiscard,
   distanceBetweenSeats,
   finishAiPlayPhase,
+  GAME_LOG_LIMIT,
   getCardPlayInfo,
   getDyingCards,
   getDiscardOverflow,
@@ -1916,7 +1917,7 @@ function App() {
           current
             ? {
                 ...current,
-                log: [`【${skillName}】需要在自己的出牌阶段发动。`, ...current.log].slice(0, 18),
+                log: [`【${skillName}】需要在自己的出牌阶段发动。`, ...current.log].slice(0, GAME_LOG_LIMIT),
               }
             : current,
         );
@@ -1949,7 +1950,7 @@ function App() {
                 ? `技能【${skillName}】已接入，会在对应时机自动触发或作为响应牌生效。`
                 : `技能【${skillName}】已显示，效果将在后续主动技能批次接入。`,
               ...current.log,
-            ].slice(0, 18),
+            ].slice(0, GAME_LOG_LIMIT),
           }
         : current,
     );
@@ -2048,7 +2049,7 @@ function App() {
         reason
           ? {
               ...next,
-              log: [`${actor.general.name} 外部AI：${reason}`, ...next.log].slice(0, 18),
+              log: [`${actor.general.name} 外部AI：${reason}`, ...next.log].slice(0, GAME_LOG_LIMIT),
             }
           : next;
 
@@ -2468,6 +2469,23 @@ function App() {
           <TableActionOverlay effect={game.lastEffect} />
         </div>
       </section>
+
+      {game.winner ? (
+        <section className={`victory-screen ${roleToneClass(game.winner.side === "主忠" ? "主公" : game.winner.side)}`} data-testid="victory-screen">
+          <div>
+            <p className="eyebrow">游戏结束</p>
+            <h2>
+              {game.winner.side === "主忠"
+                ? "主公与忠臣胜利"
+                : `${game.winner.side}胜利`}
+            </h2>
+            <p>{game.winner.reason}</p>
+          </div>
+          <button type="button" onClick={restart}>
+            重新开始
+          </button>
+        </section>
+      ) : null}
 
       {pending?.type === "guanxing_response" && pending.seatId === playerSeat.id ? (
         <section className="response-panel" data-testid="guanxing-response">

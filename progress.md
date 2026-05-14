@@ -128,6 +128,17 @@ Original prompt: 我想制作单人三国杀游戏，8人局，游戏卡牌和�
 - Revised v1.1 external AI security: removed all frontend API key input/storage/direct supplier calls, added Cloudflare Pages Function `/api/ai-decision`, and made missing server secrets/API failures return a fallback response consumed by the local AI path.
 - Verified `npm run build`; Wrangler Pages local dev returns fallback JSON when secrets are absent; Edge smoke confirmed no password/key input in the AI settings panel and no console errors during missing-secret fallback.
 - Enlarged setup general selection cards for better skill readability: wider 5-card grid on large screens, larger selected-general preview, and visible skill chips under each candidate. Verified with `npm run build` and system Edge screenshots at 2048px.
+- Fixed the 2026-05-14 rule-bug batch:
+  - `遗计` now allows selecting any alive character, including self, matching the latest correction.
+  - Draws and judge cards now recycle the discard pile into a shuffled draw pile when the draw pile is empty, preventing late-game no-card draws.
+  - `克己` and `闭月` now auto-trigger for the human player instead of opening manual choice prompts; `据守` remains optional.
+  - Battle log retention increased from 18 to 120 entries, including direct UI log insertions and `render_game_to_text` summary output.
+  - Added a visible victory panel for `反贼`, `内奸`, and `主忠` wins.
+  - Verified `npm run build` passes; standard Playwright client still cannot launch because bundled Chromium is missing, so system Edge fallback was used.
+  - Edge regression artifacts saved under `output/bugfix-regression/`:
+    - `regression-result.json`: `遗计` self target, discard-pile recycle draw, three identity win paths, rebel-kill reward, and 120-entry logs pass.
+    - `long-ai-result.json`: all-AI long simulation reached a valid rebel win with no pending-action stall and no console errors.
+    - `skill-coverage.json`: all 66 current skill names are referenced in both game logic and UI code.
 - Latest update:
   - Added chainable `无懈可击` resolution for targeted tricks, delayed trick effects, and mass-trick per-target effects.
   - Each `无懈可击` now flips whether the original trick is nullified, so chains like player `无懈` -> AI `反无懈` -> ally `再无懈` can resolve correctly.
