@@ -143,6 +143,69 @@ export type PendingAction =
       message: string;
     }
   | {
+      type: "guanshi_force_response";
+      sourceSeatId: number;
+      targetSeatId: number;
+      card: DeckInstance;
+      damage: number;
+      damageType: DamageType;
+      discardableCards: DeckInstance[];
+      message: string;
+    }
+  | {
+      type: "qinglong_followup_response";
+      sourceSeatId: number;
+      targetSeatId: number;
+      previousCard: DeckInstance;
+      shaCardIds: string[];
+      message: string;
+    }
+  | {
+      type: "cixiong_response";
+      sourceSeatId: number;
+      targetSeatId: number;
+      card: DeckInstance;
+      damage: number;
+      message: string;
+    }
+  | {
+      type: "hanbing_response";
+      sourceSeatId: number;
+      targetSeatId: number;
+      card: DeckInstance;
+      damage: number;
+      damageType: DamageType;
+      message: string;
+    }
+  | {
+      type: "qilingong_response";
+      sourceSeatId: number;
+      targetSeatId: number;
+      amount: number;
+      damageType: DamageType;
+      damageCard: DeckInstance;
+      transmittedTargetIds: number[];
+      mountOptions: Array<{
+        key: string;
+        slot: "offensiveMount" | "defensiveMount";
+        card: DeckInstance;
+      }>;
+      message: string;
+    }
+  | {
+      type: "guohe_select_response";
+      sourceSeatId: number;
+      targetSeatId: number;
+      card: DeckInstance;
+      options: Array<{
+        key: string;
+        zone: "手牌" | "装备区" | "判定区";
+        label: string;
+        card?: DeckInstance;
+      }>;
+      message: string;
+    }
+  | {
       type: "huogong_discard";
       sourceSeatId: number;
       targetSeatId: number;

@@ -35,15 +35,21 @@ import {
   respondToQiaobianDrawTargets,
   respondToQiaobianPhase,
   respondToQiaobianPlayMove,
+  respondToQinglongFollowup,
   respondToBasicCard,
+  respondToCixiongSword,
   respondToDuelSha,
   respondToDrawSkill,
   respondToEndSkill,
   respondToFankui,
   respondToGanglie,
+  respondToGuanshiForce,
+  respondToGuoheSelect,
+  respondToHanbingSword,
   respondToHuogongDiscard,
   respondToJiedaoSha,
   respondToJudgeReplace,
+  respondToQilingong,
   respondToSkillJudgeReplace,
   respondToBeige,
   respondToJianxiong,
@@ -895,7 +901,16 @@ const actionRequiredSeatId = (pending: PendingAction | null): number | null => {
   switch (pending.type) {
     case "shan_response":
     case "basic_card_response":
+      return pending.targetSeatId;
     case "huogong_discard":
+      return pending.sourceSeatId;
+    case "guanshi_force_response":
+    case "qinglong_followup_response":
+    case "guohe_select_response":
+    case "hanbing_response":
+    case "qilingong_response":
+      return pending.sourceSeatId;
+    case "cixiong_response":
       return pending.targetSeatId;
     case "wugufengdeng_select":
       return pending.responderSeatId;
@@ -1227,6 +1242,22 @@ function App() {
       ? pending
       : null;
   const shanCards = playerSeat?.hand.filter((card) => isCardUsableAsShan(playerSeat, card)) ?? [];
+  const guanshiDiscardCards =
+    pending?.type === "guanshi_force_response" && pending.sourceSeatId === playerSeat?.id
+      ? pending.discardableCards
+      : [];
+  const qinglongShaCards =
+    pending?.type === "qinglong_followup_response" && pending.sourceSeatId === playerSeat?.id && playerSeat
+      ? playerSeat.hand.filter((card) => pending.shaCardIds.includes(card.instance_id))
+      : [];
+  const guoheOptions =
+    pending?.type === "guohe_select_response" && pending.sourceSeatId === playerSeat?.id
+      ? pending.options
+      : [];
+  const qilingongMountOptions =
+    pending?.type === "qilingong_response" && pending.sourceSeatId === playerSeat?.id
+      ? pending.mountOptions
+      : [];
   const basicResponseCards =
     pending?.type === "basic_card_response" && playerSeat
       ? playerSeat.hand.filter((card) =>
@@ -1681,10 +1712,10 @@ function App() {
     setGame(playCardFromHand(game, playerSeat.id, selectedCard.instance_id));
   }, [game, playerSeat, selectedCard, selectedInfo]);
 
-  const handleShaResponse = useCallback((useShan: boolean) => {
+  const handleShaResponse = useCallback((useShan: boolean, cardInstanceId?: string | null) => {
     setSelectedCardId(null);
     setSelectedTargetIds([]);
-    setGame((current) => (current ? respondToSha(current, useShan) : current));
+    setGame((current) => (current ? respondToSha(current, useShan, cardInstanceId) : current));
   }, []);
 
   const handleLiuliResponse = useCallback((useSkill: boolean) => {
@@ -1822,22 +1853,54 @@ function App() {
     setGame((current) => (current ? respondToLuoshen(current, useSkill) : current));
   }, []);
 
-  const handleBasicResponse = useCallback((action: "card" | "wuxie" | "pass") => {
+  const handleBasicResponse = useCallback((action: "card" | "wuxie" | "pass", cardInstanceId?: string | null) => {
     setSelectedCardId(null);
     setSelectedTargetIds([]);
-    setGame((current) => (current ? respondToBasicCard(current, action) : current));
+    setGame((current) => (current ? respondToBasicCard(current, action, cardInstanceId) : current));
   }, []);
 
-  const handleWuxieResponse = useCallback((useWuxie: boolean) => {
+  const handleWuxieResponse = useCallback((useWuxie: boolean, cardInstanceId?: string | null) => {
     setSelectedCardId(null);
     setSelectedTargetIds([]);
-    setGame((current) => (current ? respondToWuxie(current, useWuxie) : current));
+    setGame((current) => (current ? respondToWuxie(current, useWuxie, cardInstanceId) : current));
   }, []);
 
-  const handleDuelShaResponse = useCallback((useShaCard: boolean) => {
+  const handleDuelShaResponse = useCallback((useShaCard: boolean, cardInstanceId?: string | null) => {
     setSelectedCardId(null);
     setSelectedTargetIds([]);
-    setGame((current) => (current ? respondToDuelSha(current, useShaCard) : current));
+    setGame((current) => (current ? respondToDuelSha(current, useShaCard, cardInstanceId) : current));
+  }, []);
+
+  const handleGuanshiResponse = useCallback((useSkill: boolean) => {
+    const cardIds = useSkill ? selectedSkillCardIds.slice(0, 2) : [];
+    setSelectedCardId(null);
+    setSelectedTargetIds([]);
+    setSelectedSkillCardIds([]);
+    setGame((current) => (current ? respondToGuanshiForce(current, cardIds) : current));
+  }, [selectedSkillCardIds]);
+
+  const handleQinglongResponse = useCallback((cardInstanceId: string | null) => {
+    setSelectedCardId(null);
+    setSelectedTargetIds([]);
+    setGame((current) => (current ? respondToQinglongFollowup(current, cardInstanceId) : current));
+  }, []);
+
+  const handleCixiongResponse = useCallback((discardHand: boolean) => {
+    setSelectedCardId(null);
+    setSelectedTargetIds([]);
+    setGame((current) => (current ? respondToCixiongSword(current, discardHand) : current));
+  }, []);
+
+  const handleHanbingResponse = useCallback((useSkill: boolean) => {
+    setSelectedCardId(null);
+    setSelectedTargetIds([]);
+    setGame((current) => (current ? respondToHanbingSword(current, useSkill) : current));
+  }, []);
+
+  const handleQilingongResponse = useCallback((optionKey: string | null) => {
+    setSelectedCardId(null);
+    setSelectedTargetIds([]);
+    setGame((current) => (current ? respondToQilingong(current, optionKey) : current));
   }, []);
 
   const handleHuogongDiscard = useCallback((cardInstanceId: string | null) => {
@@ -1848,10 +1911,16 @@ function App() {
     );
   }, []);
 
-  const handleJiedaoResponse = useCallback((useShaCard: boolean) => {
+  const handleJiedaoResponse = useCallback((useShaCard: boolean, cardInstanceId?: string | null) => {
     setSelectedCardId(null);
     setSelectedTargetIds([]);
-    setGame((current) => (current ? respondToJiedaoSha(current, useShaCard) : current));
+    setGame((current) => (current ? respondToJiedaoSha(current, useShaCard, cardInstanceId) : current));
+  }, []);
+
+  const handleGuoheSelect = useCallback((optionKey: string) => {
+    setSelectedCardId(null);
+    setSelectedTargetIds([]);
+    setGame((current) => (current ? respondToGuoheSelect(current, optionKey) : current));
   }, []);
 
   const handleWuguSelect = useCallback((cardInstanceId: string) => {
@@ -2900,16 +2969,145 @@ function App() {
             <h2>需要打出闪</h2>
             <p>{pending.message}</p>
           </div>
-          <div className="response-actions">
-            <button
-              type="button"
-              onClick={() => handleShaResponse(true)}
-              disabled={!pending.canRespond || shanCards.length === 0}
-            >
-              打出闪{shanCards.length > 0 ? `（${shanCards.length}）` : ""}
-            </button>
+          <div className="response-actions card-choice-actions">
+            {shanCards.map((card) => (
+              <MiniCard
+                key={card.instance_id}
+                card={card}
+                label="打出"
+                reason={`打出${card.name}响应杀`}
+                onClick={() => handleShaResponse(true, card.instance_id)}
+              />
+            ))}
             <button type="button" onClick={() => handleShaResponse(false)}>
               不出闪，承受伤害
+            </button>
+          </div>
+        </section>
+      ) : null}
+
+      {pending?.type === "guanshi_force_response" && pending.sourceSeatId === playerSeat.id ? (
+        <section className="response-panel" data-testid="guanshi-force-response">
+          <div>
+            <p className="eyebrow">贯石斧</p>
+            <h2>弃置2张牌强制命中</h2>
+            <p>{pending.message}</p>
+          </div>
+          <div className="response-actions card-choice-actions">
+            {guanshiDiscardCards.map((card) => {
+              const selected = selectedSkillCardIds.includes(card.instance_id);
+              return (
+                <MiniCard
+                  key={card.instance_id}
+                  card={card}
+                  selected={selected}
+                  label={selected ? "已选" : "弃置"}
+                  reason={`弃置${card.name}作为贯石斧代价`}
+                  onClick={() =>
+                    setSelectedSkillCardIds((current) =>
+                      current.includes(card.instance_id)
+                        ? current.filter((id) => id !== card.instance_id)
+                        : current.length >= 2
+                          ? [current[1], card.instance_id]
+                          : [...current, card.instance_id],
+                    )
+                  }
+                />
+              );
+            })}
+            <button type="button" onClick={() => handleGuanshiResponse(true)} disabled={selectedSkillCardIds.length !== 2}>
+              发动贯石斧
+            </button>
+            <button type="button" onClick={() => handleGuanshiResponse(false)}>
+              不发动
+            </button>
+          </div>
+        </section>
+      ) : null}
+
+      {pending?.type === "qinglong_followup_response" && pending.sourceSeatId === playerSeat.id ? (
+        <section className="response-panel" data-testid="qinglong-followup-response">
+          <div>
+            <p className="eyebrow">青龙偃月刀</p>
+            <h2>追加一张杀</h2>
+            <p>{pending.message}</p>
+          </div>
+          <div className="response-actions card-choice-actions">
+            {qinglongShaCards.map((card) => (
+              <MiniCard
+                key={card.instance_id}
+                card={card}
+                label="追杀"
+                reason={`使用${card.name}发动青龙偃月刀`}
+                onClick={() => handleQinglongResponse(card.instance_id)}
+              />
+            ))}
+            <button type="button" onClick={() => handleQinglongResponse(null)}>
+              不追杀
+            </button>
+          </div>
+        </section>
+      ) : null}
+
+      {pending?.type === "cixiong_response" && pending.targetSeatId === playerSeat.id ? (
+        <section className="response-panel" data-testid="cixiong-response">
+          <div>
+            <p className="eyebrow">雌雄双股剑</p>
+            <h2>弃1张手牌或让对方摸牌</h2>
+            <p>{pending.message}</p>
+          </div>
+          <div className="response-actions card-choice-actions">
+            <button
+              type="button"
+              onClick={() => handleCixiongResponse(true)}
+              disabled={playerSeat.hand.length === 0}
+            >
+              弃置1张手牌
+            </button>
+            <button type="button" onClick={() => handleCixiongResponse(false)}>
+              让对方摸1张
+            </button>
+          </div>
+        </section>
+      ) : null}
+
+      {pending?.type === "hanbing_response" && pending.sourceSeatId === playerSeat.id ? (
+        <section className="response-panel" data-testid="hanbing-response">
+          <div>
+            <p className="eyebrow">寒冰剑</p>
+            <h2>防止伤害并弃置2张牌</h2>
+            <p>{pending.message}</p>
+          </div>
+          <div className="response-actions card-choice-actions">
+            <button type="button" onClick={() => handleHanbingResponse(true)}>
+              发动寒冰剑
+            </button>
+            <button type="button" onClick={() => handleHanbingResponse(false)}>
+              不发动，造成伤害
+            </button>
+          </div>
+        </section>
+      ) : null}
+
+      {pending?.type === "qilingong_response" && pending.sourceSeatId === playerSeat.id ? (
+        <section className="response-panel" data-testid="qilingong-response">
+          <div>
+            <p className="eyebrow">麒麟弓</p>
+            <h2>弃置目标坐骑</h2>
+            <p>{pending.message}</p>
+          </div>
+          <div className="response-actions card-choice-actions">
+            {qilingongMountOptions.map((option) => (
+              <MiniCard
+                key={option.key}
+                card={option.card}
+                label="弃马"
+                reason={`弃置${option.card.name}`}
+                onClick={() => handleQilingongResponse(option.key)}
+              />
+            ))}
+            <button type="button" onClick={() => handleQilingongResponse(null)}>
+              不发动
             </button>
           </div>
         </section>
@@ -2922,22 +3120,25 @@ function App() {
             <h2>需要打出{pending.requiredCard === "shan" ? "闪" : "杀"}</h2>
             <p>{pending.message}</p>
           </div>
-          <div className="response-actions">
-            <button
-              type="button"
-              onClick={() => handleBasicResponse("card")}
-              disabled={basicResponseCards.length === 0}
-            >
-              打出{pending.requiredCard === "shan" ? "闪" : "杀"}
-              {basicResponseCards.length > 0 ? `（${basicResponseCards.length}）` : ""}
-            </button>
-            <button
-              type="button"
-              onClick={() => handleBasicResponse("wuxie")}
-              disabled={wuxieCards.length === 0}
-            >
-              无懈可击{wuxieCards.length > 0 ? `（${wuxieCards.length}）` : ""}
-            </button>
+          <div className="response-actions card-choice-actions">
+            {basicResponseCards.map((card) => (
+              <MiniCard
+                key={card.instance_id}
+                card={card}
+                label="打出"
+                reason={`打出${card.name}响应${pending.cardName}`}
+                onClick={() => handleBasicResponse("card", card.instance_id)}
+              />
+            ))}
+            {wuxieCards.map((card) => (
+              <MiniCard
+                key={card.instance_id}
+                card={card}
+                label="无懈"
+                reason={`使用${card.name}抵消锦囊效果`}
+                onClick={() => handleBasicResponse("wuxie", card.instance_id)}
+              />
+            ))}
             <button type="button" onClick={() => handleBasicResponse("pass")}>
               不响应，承受效果
             </button>
@@ -2952,14 +3153,16 @@ function App() {
             <h2>需要打出杀</h2>
             <p>{pending.message}</p>
           </div>
-          <div className="response-actions">
-            <button
-              type="button"
-              onClick={() => handleDuelShaResponse(true)}
-              disabled={duelShaCards.length === 0}
-            >
-              打出杀{duelShaCards.length > 0 ? `（${duelShaCards.length}）` : ""}
-            </button>
+          <div className="response-actions card-choice-actions">
+            {duelShaCards.map((card) => (
+              <MiniCard
+                key={card.instance_id}
+                card={card}
+                label="打出"
+                reason={`打出${card.name}响应决斗`}
+                onClick={() => handleDuelShaResponse(true, card.instance_id)}
+              />
+            ))}
             <button type="button" onClick={() => handleDuelShaResponse(false)}>
               不出杀，承受伤害
             </button>
@@ -2998,17 +3201,46 @@ function App() {
             <h2>需要打出杀</h2>
             <p>{pending.message}</p>
           </div>
-          <div className="response-actions">
-            <button
-              type="button"
-              onClick={() => handleJiedaoResponse(true)}
-              disabled={!pending.canRespond}
-            >
-              出杀
-            </button>
+          <div className="response-actions card-choice-actions">
+            {playerSeat.hand.filter((card) => isCardUsableAsSha(playerSeat, card)).map((card) => (
+              <MiniCard
+                key={card.instance_id}
+                card={card}
+                label="出杀"
+                reason={`使用${card.name}响应借刀杀人`}
+                onClick={() => handleJiedaoResponse(true, card.instance_id)}
+              />
+            ))}
             <button type="button" onClick={() => handleJiedaoResponse(false)}>
               交出武器
             </button>
+          </div>
+        </section>
+      ) : null}
+
+      {pending?.type === "guohe_select_response" && pending.sourceSeatId === playerSeat.id ? (
+        <section className="response-panel" data-testid="guohe-select-response">
+          <div>
+            <p className="eyebrow">过河拆桥</p>
+            <h2>选择拆除区域</h2>
+            <p>{pending.message}</p>
+          </div>
+          <div className="response-actions card-choice-actions">
+            {guoheOptions.map((option) =>
+              option.card ? (
+                <MiniCard
+                  key={option.key}
+                  card={option.card}
+                  label="拆除"
+                  reason={`拆除${option.zone}${option.label}`}
+                  onClick={() => handleGuoheSelect(option.key)}
+                />
+              ) : (
+                <button type="button" key={option.key} onClick={() => handleGuoheSelect(option.key)}>
+                  拆除{option.label}
+                </button>
+              ),
+            )}
           </div>
         </section>
       ) : null}
@@ -3156,13 +3388,15 @@ function App() {
             </p>
           </div>
           <div className="response-actions">
-            <button
-              type="button"
-              onClick={() => handleWuxieResponse(true)}
-              disabled={wuxieCards.length === 0}
-            >
-              使用无懈可击{wuxieCards.length > 0 ? `（${wuxieCards.length}）` : ""}
-            </button>
+            {wuxieCards.map((card) => (
+              <MiniCard
+                key={card.instance_id}
+                card={card}
+                label="无懈"
+                reason={`使用${card.name}`}
+                onClick={() => handleWuxieResponse(true, card.instance_id)}
+              />
+            ))}
             <button type="button" onClick={() => handleWuxieResponse(false)}>
               不使用
             </button>

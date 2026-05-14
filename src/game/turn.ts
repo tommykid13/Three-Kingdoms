@@ -159,6 +159,35 @@ const clonePendingAction = (pending: PendingAction | null): PendingAction | null
     };
   }
 
+  if (pending.type === "guanshi_force_response") {
+    return {
+      ...pending,
+      discardableCards: [...pending.discardableCards],
+    };
+  }
+
+  if (pending.type === "qinglong_followup_response") {
+    return {
+      ...pending,
+      shaCardIds: [...pending.shaCardIds],
+    };
+  }
+
+  if (pending.type === "qilingong_response") {
+    return {
+      ...pending,
+      transmittedTargetIds: [...pending.transmittedTargetIds],
+      mountOptions: pending.mountOptions.map((option) => ({ ...option })),
+    };
+  }
+
+  if (pending.type === "guohe_select_response") {
+    return {
+      ...pending,
+      options: pending.options.map((option) => ({ ...option })),
+    };
+  }
+
   if (pending.type === "leiji_response") {
     return {
       ...pending,
@@ -965,7 +994,7 @@ const takeFankuiCardByKey = (game: GameState, sourceSeat: Seat, key: string) => 
     const index = sourceSeat.equipment.findIndex((card) => card.instance_id === instanceId);
     if (index >= 0) {
       const [card] = sourceSeat.equipment.splice(index, 1);
-      triggerXiaojiIfEquipmentLost(game, sourceSeat, card);
+      triggerEquipmentLost(game, sourceSeat, card);
       return { card, zone: "装备区" };
     }
   }
@@ -1095,17 +1124,10 @@ const continueDamagedSeatSkills = (
         appendLog(game, game.pendingAction.message);
         return;
       }
-      const aliveCount = game.seats.filter((item) => item.alive).length;
       const recipient =
-        game.seats
-          .filter((seat) => validTargetIds.includes(seat.id))
-          .sort((a, b) => {
-            const rankDelta =
-              roleEnemyRank(targetSeat.role, a.role, aliveCount) -
-              roleEnemyRank(targetSeat.role, b.role, aliveCount);
-            if (rankDelta !== 0) return rankDelta;
-            return a.hand.length - b.hand.length;
-          })[0] ?? null;
+        chooseSkillAlly(game, targetSeat, true) ??
+        game.seats.find((seat) => seat.alive && seat.id === targetSeat.id) ??
+        null;
       if (recipient) {
         drawFromPile(game, recipient, drawCount);
         appendLog(game, `${targetSeat.general.name} 发动【遗计】，令 ${recipient.general.name} 获得 ${drawCount} 张牌。`);
@@ -1328,6 +1350,29 @@ const continueAfterDamageAndBeige = (
   finishAfterDamagedSeatSkills(game, context);
 };
 
+const adjustIncomingDamageAmount = (
+  game: GameState,
+  targetSeat: Seat,
+  amount: number,
+  damageTypeValue: DamageType,
+  sourceSeat: Seat | null | undefined,
+  damageCard?: DeckInstance,
+) => {
+  let adjusted = amount;
+  if (adjusted <= 0) {
+    return adjusted;
+  }
+  if (damageTypeValue === "fire" && hasEffectiveArmorEquipped(targetSeat, "tengjia", sourceSeat, damageCard)) {
+    adjusted += 1;
+    appendLog(game, `${targetSeat.general.name} 的【藤甲】令火焰伤害 +1。`);
+  }
+  if (adjusted > 1 && hasEffectiveArmorEquipped(targetSeat, "baiyinshizi", sourceSeat, damageCard)) {
+    appendLog(game, `${targetSeat.general.name} 的【白银狮子】将 ${adjusted} 点伤害减至 1 点。`);
+    adjusted = 1;
+  }
+  return adjusted;
+};
+
 const finishAfterDamagedSeatSkills = (
   game: GameState,
   context: DamageSkillContext,
@@ -1358,15 +1403,24 @@ const finishAfterDamagedSeatSkills = (
   }
 
   linkedTarget.chained = false;
-  linkedTarget.hp -= context.amount;
+  const linkedAmount = adjustIncomingDamageAmount(
+    game,
+    linkedTarget,
+    context.amount,
+    context.damageType,
+    sourceSeat,
+    context.damageCard,
+  );
+  linkedTarget.hp -= linkedAmount;
   appendLog(
     game,
-    `${linkedTarget.general.name} 受到铁索连环传导的 ${context.amount} 点${damageText(context.damageType)}伤害，并重置连环。`,
+    `${linkedTarget.general.name} 受到铁索连环传导的 ${linkedAmount} 点${damageText(context.damageType)}伤害，并重置连环。`,
   );
-  resolveSourceDamageSkills(game, sourceSeat, linkedTarget, context.amount);
+  resolveSourceDamageSkills(game, sourceSeat, linkedTarget, linkedAmount);
   const nextContext: DamageSkillContext = {
     ...context,
     targetSeatId: linkedTarget.id,
+    amount: linkedAmount,
     transmittedTargetIds: remainingTargetIds,
   };
   if (linkedTarget.hp > 0) {
@@ -1376,6 +1430,87 @@ const finishAfterDamagedSeatSkills = (
     return;
   }
   finishAfterDamagedSeatSkills(game, nextContext);
+};
+
+const getQilingongMountOptions = (targetSeat: Seat) =>
+  targetSeat.equipment
+    .map((card) => ({ card, slot: getEquipmentSlot(card) }))
+    .filter(
+      (item): item is { card: DeckInstance; slot: "offensiveMount" | "defensiveMount" } =>
+        item.slot === "offensiveMount" || item.slot === "defensiveMount",
+    )
+    .map((item) => ({
+      key: `${item.slot}:${item.card.instance_id}`,
+      slot: item.slot,
+      card: item.card,
+    }));
+
+const discardQilingongMountByKey = (
+  game: GameState,
+  targetSeat: Seat,
+  optionKey: string,
+) => {
+  const [, instanceId] = optionKey.split(":");
+  const index = targetSeat.equipment.findIndex((card) => card.instance_id === instanceId);
+  if (index < 0) {
+    return null;
+  }
+  const [card] = targetSeat.equipment.splice(index, 1);
+  triggerEquipmentLost(game, targetSeat, card, { forceAutoXiaoji: true });
+  discardCards(game, [card]);
+  return card;
+};
+
+const maybeTriggerQilingongAfterShaDamage = (
+  game: GameState,
+  sourceSeat: Seat | null | undefined,
+  targetSeat: Seat,
+  amount: number,
+  damageTypeValue: DamageType,
+  damageCard: DeckInstance | undefined,
+  transmittedTargetIds: number[],
+) => {
+  if (
+    !sourceSeat?.alive ||
+    !damageCard ||
+    !isSha(damageCard) ||
+    !hasWeaponEquipped(sourceSeat, "qilingong") ||
+    targetSeat.hp <= 0
+  ) {
+    return false;
+  }
+
+  const mountOptions = getQilingongMountOptions(targetSeat);
+  if (mountOptions.length === 0) {
+    return false;
+  }
+
+  const aliveCount = game.seats.filter((seat) => seat.alive).length;
+  if (sourceSeat.controller === "human") {
+    game.pendingAction = {
+      type: "qilingong_response",
+      sourceSeatId: sourceSeat.id,
+      targetSeatId: targetSeat.id,
+      amount,
+      damageType: damageTypeValue,
+      damageCard,
+      transmittedTargetIds,
+      mountOptions,
+      message: `${sourceSeat.general.name} 的【麒麟弓】触发，可以弃置 ${targetSeat.general.name} 装备区里的一张坐骑牌。`,
+    };
+    appendLog(game, game.pendingAction.message);
+    return true;
+  }
+
+  if (roleEnemyRank(sourceSeat.role, targetSeat.role, aliveCount) <= 1) {
+    const discarded = discardQilingongMountByKey(game, targetSeat, mountOptions[0].key);
+    if (discarded) {
+      appendLog(game, `${sourceSeat.general.name} 发动【麒麟弓】，弃置 ${targetSeat.general.name} 的坐骑${formatCard(discarded)}。`);
+      setLastEffect(game, sourceSeat, getEquippedCard(sourceSeat, "weapon") ?? damageCard, `${sourceSeat.general.name} 发动【麒麟弓】。`, targetSeat, "弃马");
+    }
+  }
+
+  return false;
 };
 
 const applyDamageInternal = (
@@ -1436,6 +1571,15 @@ const applyDamageInternal = (
     }
   }
 
+  const adjustedAmount = adjustIncomingDamageAmount(
+    game,
+    targetSeat,
+    amount,
+    damageTypeValue,
+    sourceSeat,
+    damageCard,
+  );
+
   const shouldTransmit =
     damageTypeValue !== "normal" && targetSeat.chained;
   const transmittedTargets = shouldTransmit
@@ -1448,12 +1592,12 @@ const applyDamageInternal = (
     appendLog(game, `${targetSeat.general.name} 的铁索连环被属性伤害触发并重置。`);
   }
 
-  targetSeat.hp -= amount;
+  targetSeat.hp -= adjustedAmount;
   const sourceName =
     sourceSeatId === null ? "无来源" : game.seats[sourceSeatId]?.general.name ?? "未知来源";
   appendLog(
     game,
-    `${targetSeat.general.name} 受到 ${sourceName} 造成的 ${amount} 点${damageText(damageTypeValue)}伤害。`,
+    `${targetSeat.general.name} 受到 ${sourceName} 造成的 ${adjustedAmount} 点${damageText(damageTypeValue)}伤害。`,
   );
 
   if (damageCard) {
@@ -1461,21 +1605,34 @@ const applyDamageInternal = (
       game,
       sourceSeat ?? targetSeat,
       damageCard,
-      `${targetSeat.general.name} 受到 ${amount} 点伤害。`,
+      `${targetSeat.general.name} 受到 ${adjustedAmount} 点伤害。`,
       targetSeat,
-      `-${amount}`,
+      `-${adjustedAmount}`,
       "damage",
     );
   }
 
   const transmittedTargetIds = transmittedTargets.map((seat) => seat.id);
   if (
+    maybeTriggerQilingongAfterShaDamage(
+      game,
+      sourceSeat,
+      targetSeat,
+      adjustedAmount,
+      damageTypeValue,
+      damageCard,
+      transmittedTargetIds,
+    )
+  ) {
+    return;
+  }
+  if (
     triggerBeigeAfterShaDamage(
       game,
       targetSeat,
       sourceSeat,
       damageCard,
-      amount,
+      adjustedAmount,
       damageTypeValue,
       transmittedTargetIds,
     ) ||
@@ -1489,7 +1646,7 @@ const applyDamageInternal = (
     game,
     sourceSeatId,
     targetSeat,
-    amount,
+    adjustedAmount,
     damageTypeValue,
     damageCard,
     transmittedTargetIds,
@@ -1519,6 +1676,87 @@ export const getEquippedCard = (seat: Seat, slot: EquipmentSlot) =>
 export const getAttackRange = (seat: Seat) => {
   const weapon = getEquippedCard(seat, "weapon");
   return weapon ? weaponRanges[weapon.card_id] ?? 1 : 1;
+};
+
+const hasArmorEquipped = (seat: Seat, cardId: string) =>
+  getEquippedCard(seat, "armor")?.card_id === cardId;
+
+const hasWeaponEquipped = (seat: Seat, cardId: string) =>
+  getEquippedCard(seat, "weapon")?.card_id === cardId;
+
+const isArmorIgnoredBySourceWeapon = (
+  sourceSeat: Seat | null | undefined,
+  card?: DeckInstance,
+) => Boolean(sourceSeat?.alive && card && isSha(card) && hasWeaponEquipped(sourceSeat, "qinggangjian"));
+
+const hasEffectiveArmorEquipped = (
+  targetSeat: Seat,
+  cardId: string,
+  sourceSeat?: Seat | null,
+  card?: DeckInstance,
+) => hasArmorEquipped(targetSeat, cardId) && !isArmorIgnoredBySourceWeapon(sourceSeat, card);
+
+const getShaWeaponDamageBonus = (
+  game: GameState,
+  sourceSeat: Seat | null | undefined,
+  targetSeat: Seat,
+  card: DeckInstance,
+) => {
+  if (
+    sourceSeat?.alive &&
+    isSha(card) &&
+    hasWeaponEquipped(sourceSeat, "gudingdao") &&
+    targetSeat.hand.length === 0
+  ) {
+    appendLog(game, `${sourceSeat.general.name} 的【古锭刀】令无手牌的 ${targetSeat.general.name} 受到的杀伤害 +1。`);
+    return 1;
+  }
+  return 0;
+};
+
+const applyZhuqueToShaCard = (
+  game: GameState,
+  sourceSeat: Seat,
+  card: DeckInstance,
+) => {
+  if (card.card_id !== "sha" || !hasWeaponEquipped(sourceSeat, "zhuque_yushan")) {
+    return card;
+  }
+  const fireSha = makeVirtualCard(card, "huosha", "火杀");
+  appendLog(game, `${sourceSeat.general.name} 发动【朱雀羽扇】，将普通【杀】改为火【杀】。`);
+  return fireSha;
+};
+
+const normalizeCardUsedAsSha = (
+  game: GameState,
+  sourceSeat: Seat,
+  card: DeckInstance,
+) => applyZhuqueToShaCard(game, sourceSeat, isSha(card) ? card : makeVirtualCard(card, "sha", "杀"));
+
+const isShaInvalidatedByArmor = (
+  game: GameState,
+  sourceSeat: Seat,
+  targetSeat: Seat,
+  card: DeckInstance,
+) => {
+  if (!isSha(card)) {
+    return false;
+  }
+  if (isArmorIgnoredBySourceWeapon(sourceSeat, card)) {
+    appendLog(game, `${sourceSeat.general.name} 的【青釭剑】无视 ${targetSeat.general.name} 的防具。`);
+    return false;
+  }
+  if (hasArmorEquipped(targetSeat, "renwangdun") && isBlack(card)) {
+    appendLog(game, `${targetSeat.general.name} 的【仁王盾】抵消黑色${formatCard(card)}。`);
+    setLastEffect(game, targetSeat, getEquippedCard(targetSeat, "armor") ?? card, `${targetSeat.general.name} 的【仁王盾】生效。`, sourceSeat, "抵消");
+    return true;
+  }
+  if (hasArmorEquipped(targetSeat, "tengjia") && cardDamageType(card) === "normal") {
+    appendLog(game, `${targetSeat.general.name} 的【藤甲】抵消普通${formatCard(card)}。`);
+    setLastEffect(game, targetSeat, getEquippedCard(targetSeat, "armor") ?? card, `${targetSeat.general.name} 的【藤甲】生效。`, sourceSeat, "抵消");
+    return true;
+  }
+  return false;
 };
 
 const aliveSeatIdsInOrder = (game: GameState) =>
@@ -1933,7 +2171,13 @@ const resolveShaAfterLiuli = (
   damage: number,
 ) => {
   const damageTypeValue = cardDamageType(card);
-  const finalDamage = damage + getLuoyiDamageBonus(game, sourceSeat, card);
+  if (isShaInvalidatedByArmor(game, sourceSeat, targetSeat, card)) {
+    return;
+  }
+  const finalDamage =
+    damage +
+    getLuoyiDamageBonus(game, sourceSeat, card) +
+    getShaWeaponDamageBonus(game, sourceSeat, targetSeat, card);
 
   if (hasSkill(targetSeat, "享乐")) {
     const basicIndex = findCardIndex(
@@ -1984,6 +2228,232 @@ const resolveShaAfterLiuli = (
   );
 };
 
+const tryBaguazhenResponse = (
+  game: GameState,
+  targetSeat: Seat,
+  sourceSeat: Seat,
+  card: DeckInstance,
+) => {
+  const armor = getEquippedCard(targetSeat, "armor");
+  if (armor?.card_id !== "baguazhen") {
+    return 0;
+  }
+  if (isArmorIgnoredBySourceWeapon(sourceSeat, card)) {
+    appendLog(game, `${sourceSeat.general.name} 的【青釭剑】令 ${targetSeat.general.name} 的【八卦阵】不能发动。`);
+    return 0;
+  }
+  const judgeCard = drawJudgeCard(game);
+  if (!judgeCard) {
+    appendLog(game, `${targetSeat.general.name} 的【八卦阵】判定失败：牌堆为空。`);
+    return 0;
+  }
+  discardCards(game, [judgeCard]);
+  if (isRed(judgeCard)) {
+    appendLog(game, `${targetSeat.general.name} 发动【八卦阵】，判定为${formatCard(judgeCard)}，视为打出一张【闪】。`);
+    setLastEffect(game, targetSeat, armor, `${targetSeat.general.name} 的【八卦阵】判定成功。`, sourceSeat, "闪");
+    return 1;
+  }
+  appendLog(game, `${targetSeat.general.name} 发动【八卦阵】，判定为${formatCard(judgeCard)}，未能自动闪避${formatCard(card)}。`);
+  setLastEffect(game, targetSeat, armor, `${targetSeat.general.name} 的【八卦阵】判定失败。`, sourceSeat, "判定");
+  return 0;
+};
+
+const getDiscardableOwnCards = (seat: Seat) => [...seat.hand, ...seat.equipment];
+
+const discardOwnCardById = (game: GameState, seat: Seat, cardInstanceId: string) => {
+  const handCard = removeCardFromHand(seat, cardInstanceId, game);
+  if (handCard) {
+    return handCard;
+  }
+  const equipmentIndex = seat.equipment.findIndex((card) => card.instance_id === cardInstanceId);
+  if (equipmentIndex >= 0) {
+    const [equipment] = seat.equipment.splice(equipmentIndex, 1);
+    triggerEquipmentLost(game, seat, equipment);
+    return equipment;
+  }
+  return null;
+};
+
+const canUseGuanshiForce = (sourceSeat: Seat) =>
+  hasWeaponEquipped(sourceSeat, "guanshifu") && getDiscardableOwnCards(sourceSeat).length >= 2;
+
+const canUseQinglongFollowup = (sourceSeat: Seat) =>
+  hasWeaponEquipped(sourceSeat, "qinglong_yanyuedao") &&
+  sourceSeat.hand.some((card) => isCardUsableAsSha(sourceSeat, card));
+
+const shouldAiPressDodgedSha = (game: GameState, sourceSeat: Seat, targetSeat: Seat) => {
+  const aliveCount = game.seats.filter((seat) => seat.alive).length;
+  return roleEnemyRank(sourceSeat.role, targetSeat.role, aliveCount) <= 1;
+};
+
+const offerQinglongAfterShaDodged = (
+  game: GameState,
+  sourceSeat: Seat,
+  targetSeat: Seat,
+  card: DeckInstance,
+) => {
+  if (!canUseQinglongFollowup(sourceSeat)) {
+    return false;
+  }
+  const shaCards = sourceSeat.hand.filter((item) => isCardUsableAsSha(sourceSeat, item));
+  if (sourceSeat.controller === "human") {
+    game.pendingAction = {
+      type: "qinglong_followup_response",
+      sourceSeatId: sourceSeat.id,
+      targetSeatId: targetSeat.id,
+      previousCard: card,
+      shaCardIds: shaCards.map((item) => item.instance_id),
+      message: `${targetSeat.general.name} 闪避了${formatCard(card)}，${sourceSeat.general.name} 可以发动【青龙偃月刀】再对其使用一张【杀】。`,
+    };
+    appendLog(game, game.pendingAction.message);
+    return true;
+  }
+  if (shouldAiPressDodgedSha(game, sourceSeat, targetSeat)) {
+    const followup = removeCardFromHand(sourceSeat, shaCards[0].instance_id, game);
+    if (followup) {
+      const playedSha = normalizeCardUsedAsSha(game, sourceSeat, followup);
+      discardCards(game, [playedSha]);
+      markShaPlayedThisTurn(game, sourceSeat);
+      appendLog(game, `${sourceSeat.general.name} 发动【青龙偃月刀】，追加使用${formatCard(playedSha)}。`);
+      setLastEffect(game, sourceSeat, playedSha, `${sourceSeat.general.name} 追加${formatCard(playedSha)}。`, targetSeat, "追杀");
+      resolveShaAgainstTarget(game, sourceSeat, targetSeat, playedSha, 1);
+      return true;
+    }
+  }
+  return false;
+};
+
+const offerAfterShaDodgedWeaponResponse = (
+  game: GameState,
+  sourceSeat: Seat,
+  targetSeat: Seat,
+  card: DeckInstance,
+  damage: number,
+  damageTypeValue: DamageType,
+) => {
+  if (canUseGuanshiForce(sourceSeat)) {
+    const discardableCards = getDiscardableOwnCards(sourceSeat);
+    if (sourceSeat.controller === "human") {
+      game.pendingAction = {
+        type: "guanshi_force_response",
+        sourceSeatId: sourceSeat.id,
+        targetSeatId: targetSeat.id,
+        card,
+        damage,
+        damageType: damageTypeValue,
+        discardableCards,
+        message: `${targetSeat.general.name} 闪避了${formatCard(card)}，${sourceSeat.general.name} 可以发动【贯石斧】弃置2张牌令此杀强制命中。`,
+      };
+      appendLog(game, game.pendingAction.message);
+      return true;
+    }
+    if (shouldAiPressDodgedSha(game, sourceSeat, targetSeat)) {
+      const discarded = discardableCards
+        .slice(0, 2)
+        .map((item) => discardOwnCardById(game, sourceSeat, item.instance_id))
+        .filter((item): item is DeckInstance => Boolean(item));
+      if (discarded.length === 2) {
+        discardCards(game, discarded);
+        appendLog(game, `${sourceSeat.general.name} 发动【贯石斧】，弃置2张牌令${formatCard(card)}强制命中。`);
+        applyDamage(game, sourceSeat.id, targetSeat, damage, damageTypeValue, card);
+        evaluateWinner(game);
+        return true;
+      }
+    }
+  }
+
+  return offerQinglongAfterShaDodged(game, sourceSeat, targetSeat, card);
+};
+
+const countDiscardableZoneCards = (seat: Seat) =>
+  seat.hand.length + seat.equipment.length + seat.judgeArea.length;
+
+const discardCardsForHanbing = (game: GameState, targetSeat: Seat) => {
+  const discarded: DeckInstance[] = [];
+  for (let index = 0; index < 2; index += 1) {
+    const removed = removeFirstZoneCard(targetSeat, game);
+    if (!removed.card) {
+      break;
+    }
+    discarded.push(removed.card);
+  }
+  if (discarded.length > 0) {
+    discardCards(game, discarded);
+  }
+  return discarded;
+};
+
+const shouldAiUseHanbing = (
+  game: GameState,
+  sourceSeat: Seat,
+  targetSeat: Seat,
+  damage: number,
+) => {
+  const aliveCount = game.seats.filter((seat) => seat.alive).length;
+  return (
+    targetSeat.hp > damage &&
+    countDiscardableZoneCards(targetSeat) >= 2 &&
+    roleEnemyRank(sourceSeat.role, targetSeat.role, aliveCount) <= 1
+  );
+};
+
+const offerHanbingBeforeShaDamage = (
+  game: GameState,
+  sourceSeat: Seat,
+  targetSeat: Seat,
+  card: DeckInstance,
+  damage: number,
+  damageTypeValue: DamageType,
+) => {
+  if (
+    !isSha(card) ||
+    !hasWeaponEquipped(sourceSeat, "hanbingjian") ||
+    countDiscardableZoneCards(targetSeat) < 2
+  ) {
+    return false;
+  }
+
+  if (sourceSeat.controller === "human") {
+    game.pendingAction = {
+      type: "hanbing_response",
+      sourceSeatId: sourceSeat.id,
+      targetSeatId: targetSeat.id,
+      card,
+      damage,
+      damageType: damageTypeValue,
+      message: `${sourceSeat.general.name} 可以发动【寒冰剑】，防止${formatCard(card)}造成的伤害，改为弃置 ${targetSeat.general.name} 的2张牌。`,
+    };
+    appendLog(game, game.pendingAction.message);
+    return true;
+  }
+
+  if (shouldAiUseHanbing(game, sourceSeat, targetSeat, damage)) {
+    const discarded = discardCardsForHanbing(game, targetSeat);
+    appendLog(
+      game,
+      `${sourceSeat.general.name} 发动【寒冰剑】，防止伤害并弃置 ${targetSeat.general.name} 的 ${discarded.map(formatCard).join("、")}。`,
+    );
+    setLastEffect(game, sourceSeat, getEquippedCard(sourceSeat, "weapon") ?? card, `${sourceSeat.general.name} 发动【寒冰剑】。`, targetSeat, "弃2");
+    return true;
+  }
+
+  return false;
+};
+
+const dealShaDamageAfterHit = (
+  game: GameState,
+  sourceSeat: Seat,
+  targetSeat: Seat,
+  damage: number,
+  damageTypeValue: DamageType,
+  card: DeckInstance,
+) => {
+  if (offerHanbingBeforeShaDamage(game, sourceSeat, targetSeat, card, damage, damageTypeValue)) {
+    return;
+  }
+  applyDamage(game, sourceSeat.id, targetSeat, damage, damageTypeValue, card);
+};
+
 const continueShaDefenseAfterTieqi = (
   game: GameState,
   sourceSeat: Seat,
@@ -1998,7 +2468,18 @@ const continueShaDefenseAfterTieqi = (
     appendLog(game, `${sourceSeat.general.name} 的【无双】令 ${targetSeat.general.name} 需要连续打出 ${requiredResponses} 张【闪】。`);
   }
 
+  const baguaResponses = !cannotUseShan
+    ? tryBaguazhenResponse(game, targetSeat, sourceSeat, card)
+    : 0;
+  if (baguaResponses >= requiredResponses) {
+    if (offerAfterShaDodgedWeaponResponse(game, sourceSeat, targetSeat, card, finalDamage, damageTypeValue)) {
+      return;
+    }
+    return;
+  }
+
   if (targetSeat.controller === "human") {
+    const remainingResponses = requiredResponses - baguaResponses;
     game.pendingAction = {
       type: "shan_response",
       sourceSeatId: sourceSeat.id,
@@ -2008,21 +2489,21 @@ const continueShaDefenseAfterTieqi = (
       damage: finalDamage,
       damageType: damageTypeValue,
       requiredResponses,
-      respondedResponses: 0,
+      respondedResponses: baguaResponses,
       canRespond:
         !cannotUseShan &&
         (targetSeat.hand.some((item) => isCardUsableAsShan(targetSeat, item)) ||
           canUseLordResponse(game, targetSeat, "shan")),
       message: cannotUseShan
         ? `${targetSeat.general.name} 成为${formatCard(card)}目标，当前不能使用【闪】响应。`
-        : `${targetSeat.general.name} 成为${formatCard(card)}目标，需要打出${requiredResponses > 1 ? `${requiredResponses} 张` : ""}【闪】。`,
+        : `${targetSeat.general.name} 成为${formatCard(card)}目标，需要打出${remainingResponses > 1 ? `${remainingResponses} 张` : ""}【闪】。`,
     };
     return;
   }
 
   const shanCards: DeckInstance[] = [];
   if (!cannotUseShan) {
-    for (let count = 0; count < requiredResponses; count += 1) {
+    for (let count = baguaResponses; count < requiredResponses; count += 1) {
       const shanIndex = findCardIndex(targetSeat, (item) => isCardUsableAsShan(targetSeat, item));
       const shan =
         shanIndex >= 0
@@ -2044,10 +2525,11 @@ const continueShaDefenseAfterTieqi = (
     }
   }
 
-  if (shanCards.length >= requiredResponses) {
-    const message = `${targetSeat.general.name} 打出 ${shanCards.length} 张【闪】，抵消${formatCard(card)}。`;
+  if (shanCards.length + baguaResponses >= requiredResponses) {
+    const responseCount = shanCards.length + baguaResponses;
+    const message = `${targetSeat.general.name} 打出 ${responseCount} 张【闪】，抵消${formatCard(card)}。`;
     appendLog(game, message);
-    setLastEffect(game, targetSeat, shanCards[shanCards.length - 1], message, sourceSeat, "闪");
+    setLastEffect(game, targetSeat, shanCards[shanCards.length - 1] ?? getEquippedCard(targetSeat, "armor") ?? card, message, sourceSeat, "闪");
     if (hasSkill(sourceSeat, "猛进") && hasAnyZoneCard(targetSeat)) {
       const removed = removeFirstZoneCard(targetSeat, game);
       if (removed.card) {
@@ -2058,27 +2540,43 @@ const continueShaDefenseAfterTieqi = (
         );
       }
     }
+    if (offerAfterShaDodgedWeaponResponse(game, sourceSeat, targetSeat, card, finalDamage, damageTypeValue)) {
+      return;
+    }
     return;
   }
 
-  if (shanCards.length > 0) {
+  if (shanCards.length + baguaResponses > 0) {
     appendLog(game, `${targetSeat.general.name} 未能凑齐【无双】所需的【闪】。`);
   }
-  applyDamage(game, sourceSeat.id, targetSeat, finalDamage, damageTypeValue, card);
+  dealShaDamageAfterHit(game, sourceSeat, targetSeat, finalDamage, damageTypeValue, card);
 };
 
-const resolveShaAgainstTarget = (
+const femaleGeneralNames = new Set([
+  "貂蝉",
+  "甄姬",
+  "孙尚香",
+  "大乔",
+  "小乔",
+  "黄月英",
+  "蔡文姬",
+]);
+
+const hasOppositeGenderForCixiong = (sourceSeat: Seat, targetSeat: Seat) =>
+  femaleGeneralNames.has(sourceSeat.general.name) !== femaleGeneralNames.has(targetSeat.general.name);
+
+const shouldAiDiscardForCixiong = (game: GameState, sourceSeat: Seat, targetSeat: Seat) => {
+  const aliveCount = game.seats.filter((seat) => seat.alive).length;
+  return targetSeat.hand.length > 0 && roleEnemyRank(targetSeat.role, sourceSeat.role, aliveCount) <= 1;
+};
+
+const continueShaAfterCixiong = (
   game: GameState,
   sourceSeat: Seat,
   targetSeat: Seat,
   card: DeckInstance,
   damage: number,
 ) => {
-  const finalDamage = damage + getLuoyiDamageBonus(game, sourceSeat, card);
-  const message = `${sourceSeat.general.name} 对 ${targetSeat.general.name} 使用${formatCard(card)}。`;
-  appendLog(game, message);
-  setLastEffect(game, sourceSeat, card, message, targetSeat, "目标", "target");
-
   if (hasSkill(targetSeat, "流离") && targetSeat.hand.length > 0) {
     const validTargetIds = getLiuliTargetIds(game, sourceSeat, targetSeat);
     if (validTargetIds.length > 0) {
@@ -2123,6 +2621,67 @@ const resolveShaAgainstTarget = (
   resolveShaAfterLiuli(game, sourceSeat, targetSeat, card, damage);
 };
 
+const offerCixiongBeforeShaDefense = (
+  game: GameState,
+  sourceSeat: Seat,
+  targetSeat: Seat,
+  card: DeckInstance,
+  damage: number,
+) => {
+  if (
+    !isSha(card) ||
+    !hasWeaponEquipped(sourceSeat, "cixiong_shuanggujian") ||
+    !hasOppositeGenderForCixiong(sourceSeat, targetSeat)
+  ) {
+    return false;
+  }
+
+  if (targetSeat.controller === "human") {
+    game.pendingAction = {
+      type: "cixiong_response",
+      sourceSeatId: sourceSeat.id,
+      targetSeatId: targetSeat.id,
+      card,
+      damage,
+      message:
+        targetSeat.hand.length > 0
+          ? `${sourceSeat.general.name} 的【雌雄双股剑】触发，${targetSeat.general.name} 可以弃置1张手牌；否则 ${sourceSeat.general.name} 摸1张牌。`
+          : `${sourceSeat.general.name} 的【雌雄双股剑】触发，${targetSeat.general.name} 没有手牌，${sourceSeat.general.name} 将摸1张牌。`,
+    };
+    appendLog(game, game.pendingAction.message);
+    return true;
+  }
+
+  if (shouldAiDiscardForCixiong(game, sourceSeat, targetSeat)) {
+    const cost = removeCardAt(targetSeat, 0, game);
+    discardCards(game, [cost]);
+    appendLog(game, `${targetSeat.general.name} 因【雌雄双股剑】弃置${formatCard(cost)}。`);
+  } else {
+    drawFromPile(game, sourceSeat, 1);
+    appendLog(game, `${targetSeat.general.name} 不弃置手牌，${sourceSeat.general.name} 因【雌雄双股剑】摸1张牌。`);
+  }
+  continueShaAfterCixiong(game, sourceSeat, targetSeat, card, damage);
+  return true;
+};
+
+const resolveShaAgainstTarget = (
+  game: GameState,
+  sourceSeat: Seat,
+  targetSeat: Seat,
+  card: DeckInstance,
+  damage: number,
+) => {
+  const message = `${sourceSeat.general.name} 对 ${targetSeat.general.name} 使用${formatCard(card)}。`;
+  appendLog(game, message);
+  setLastEffect(game, sourceSeat, card, message, targetSeat, "目标", "target");
+
+  if (offerCixiongBeforeShaDefense(game, sourceSeat, targetSeat, card, damage)) {
+    return;
+  }
+
+  continueShaAfterCixiong(game, sourceSeat, targetSeat, card, damage);
+};
+
 const equipCard = (game: GameState, seat: Seat, card: DeckInstance) => {
   const slot = getEquipmentSlot(card);
   if (!slot) {
@@ -2136,7 +2695,7 @@ const equipCard = (game: GameState, seat: Seat, card: DeckInstance) => {
     const [oldCard] = seat.equipment.splice(oldIndex, 1);
     discardCards(game, [oldCard]);
     appendLog(game, `${seat.general.name} 替换装备，弃置${formatCard(oldCard)}。`);
-    triggerXiaojiIfEquipmentLost(game, seat, oldCard);
+    triggerEquipmentLost(game, seat, oldCard);
   }
 
   seat.equipment.push(card);
@@ -2544,9 +3103,14 @@ const startSkillJudge = (game: GameState, context: SkillJudgeContext) => {
   resolveSkillJudgeResult(game, context, judgeCard);
 };
 
-const triggerXiaojiIfEquipmentLost = (game: GameState, seat: Seat, card: DeckInstance | null) => {
+const triggerXiaojiIfEquipmentLost = (
+  game: GameState,
+  seat: Seat,
+  card: DeckInstance | null,
+  options: { forceAuto?: boolean } = {},
+) => {
   if (card && hasSkill(seat, "枭姬") && getEquipmentSlot(card)) {
-    if (seat.controller === "human" && !game.pendingAction) {
+    if (seat.controller === "human" && !game.pendingAction && !options.forceAuto) {
       game.pendingAction = {
         type: "xiaoji_response",
         seatId: seat.id,
@@ -2561,6 +3125,27 @@ const triggerXiaojiIfEquipmentLost = (game: GameState, seat: Seat, card: DeckIns
   }
 };
 
+const triggerBaiyinShiziIfLost = (game: GameState, seat: Seat, card: DeckInstance | null) => {
+  if (!card || card.card_id !== "baiyinshizi" || !seat.alive || seat.hp >= seat.maxHp) {
+    return;
+  }
+  healSeat(game, seat, 1, "失去【白银狮子】");
+  setLastEffect(game, seat, card, `${seat.general.name} 失去【白银狮子】，回复1点体力。`, undefined, "+1");
+};
+
+const triggerEquipmentLost = (
+  game: GameState,
+  seat: Seat,
+  card: DeckInstance | null,
+  options: { forceAutoXiaoji?: boolean } = {},
+) => {
+  if (!card || !getEquipmentSlot(card)) {
+    return;
+  }
+  triggerBaiyinShiziIfLost(game, seat, card);
+  triggerXiaojiIfEquipmentLost(game, seat, card, { forceAuto: options.forceAutoXiaoji });
+};
+
 const removeFirstZoneCard = (seat: Seat, game?: GameState) => {
   if (seat.judgeArea.length > 0) {
     return { card: seat.judgeArea.shift() ?? null, zone: "判定区" };
@@ -2568,12 +3153,64 @@ const removeFirstZoneCard = (seat: Seat, game?: GameState) => {
   if (seat.equipment.length > 0) {
     const card = seat.equipment.shift() ?? null;
     if (game) {
-      triggerXiaojiIfEquipmentLost(game, seat, card);
+      triggerEquipmentLost(game, seat, card);
     }
     return { card, zone: "装备区" };
   }
   if (seat.hand.length > 0) {
     return { card: seat.hand.shift() ?? null, zone: "手牌" };
+  }
+  return { card: null, zone: "" };
+};
+
+const selectableZoneCardOptions = (seat: Seat) => [
+  ...(seat.hand.length > 0
+    ? [
+        {
+          key: "hand",
+          zone: "手牌" as const,
+          label: `随机手牌（${seat.hand.length}）`,
+        },
+      ]
+    : []),
+  ...seat.equipment.map((card) => ({
+    key: `equipment:${card.instance_id}`,
+    zone: "装备区" as const,
+    label: card.name,
+    card,
+  })),
+  ...seat.judgeArea.map((card) => ({
+    key: `judge:${card.instance_id}`,
+    zone: "判定区" as const,
+    label: card.name,
+    card,
+  })),
+];
+
+const removeZoneCardByOptionKey = (
+  game: GameState,
+  seat: Seat,
+  optionKey: string,
+) => {
+  if (optionKey === "hand") {
+    const card = seat.hand.length > 0 ? removeCardAt(seat, 0, game) : null;
+    return { card, zone: "手牌" };
+  }
+  const [zone, instanceId] = optionKey.split(":");
+  if (zone === "equipment") {
+    const index = seat.equipment.findIndex((card) => card.instance_id === instanceId);
+    if (index >= 0) {
+      const [card] = seat.equipment.splice(index, 1);
+      triggerEquipmentLost(game, seat, card);
+      return { card, zone: "装备区" };
+    }
+  }
+  if (zone === "judge") {
+    const index = seat.judgeArea.findIndex((card) => card.instance_id === instanceId);
+    if (index >= 0) {
+      const [card] = seat.judgeArea.splice(index, 1);
+      return { card, zone: "判定区" };
+    }
   }
   return { card: null, zone: "" };
 };
@@ -2838,8 +3475,11 @@ const playWuxieIntoChain = (
   game: GameState,
   pending: WuxiePending,
   responder: Seat,
+  cardInstanceId?: string | null,
 ): WuxiePending | null => {
-  const wuxieIndex = findCardIndex(responder, isWuxie);
+  const wuxieIndex = cardInstanceId
+    ? responder.hand.findIndex((card) => card.instance_id === cardInstanceId && isWuxie(card))
+    : findCardIndex(responder, isWuxie);
   if (wuxieIndex < 0) {
     return null;
   }
@@ -3336,6 +3976,37 @@ const resolveMassTargetRequirement = (
     "target",
   );
 
+  if (
+    (card.card_id === "nanmanruqin" || card.card_id === "wanjianqifa") &&
+    hasArmorEquipped(target, "tengjia")
+  ) {
+    appendLog(game, `${target.general.name} 的【藤甲】抵消${formatCard(card)}的伤害效果。`);
+    setLastEffect(game, target, getEquippedCard(target, "armor") ?? card, `${target.general.name} 的【藤甲】生效。`, sourceSeat, "抵消");
+    continueMassResponseTrick(
+      game,
+      sourceSeatId,
+      card,
+      requiredCard,
+      remainingTargetIds,
+      damage,
+      damageType,
+    );
+    return;
+  }
+
+  if (requiredCard === "shan" && tryBaguazhenResponse(game, target, sourceSeat, card) > 0) {
+    continueMassResponseTrick(
+      game,
+      sourceSeatId,
+      card,
+      requiredCard,
+      remainingTargetIds,
+      damage,
+      damageType,
+    );
+    return;
+  }
+
   const predicate = responsePredicateForSeat(target, requiredCard);
   if (target.controller === "human") {
     game.pendingAction = {
@@ -3571,7 +4242,7 @@ const resolveJiedaoSha = (
     return;
   }
 
-  const sha = removeCardAt(weaponOwner, shaIndex, game);
+  const sha = normalizeCardUsedAsSha(game, weaponOwner, removeCardAt(weaponOwner, shaIndex, game));
   discardCards(game, [sha]);
   const message = `${weaponOwner.general.name} 响应${formatCard(card)}，对 ${victim.general.name} 使用${formatCard(sha)}。`;
   appendLog(game, message);
@@ -3619,7 +4290,26 @@ const resolveTargetedTrick = (
   }
 
   if (card.card_id === "guohechaiqiao") {
-    const removed = removeFirstZoneCard(target, game);
+    const options = selectableZoneCardOptions(target);
+    if (actor.controller === "human" && options.length > 0) {
+      game.pendingAction = {
+        type: "guohe_select_response",
+        sourceSeatId: actor.id,
+        targetSeatId: target.id,
+        card,
+        options,
+        message: `${actor.general.name} 对 ${target.general.name} 使用${formatCard(card)}，请选择拆除手牌、装备或判定区牌。`,
+      };
+      appendLog(game, game.pendingAction.message);
+      return;
+    }
+    const preferred =
+      options.find((option) => option.zone === "判定区") ??
+      options.find((option) => option.zone === "装备区") ??
+      options[0];
+    const removed = preferred
+      ? removeZoneCardByOptionKey(game, target, preferred.key)
+      : { card: null, zone: "" };
     if (removed.card) {
       discardCards(game, [removed.card]);
       const message = `${actor.general.name} 对 ${target.general.name} 使用${formatCard(card)}，弃置其${removed.zone}${formatCard(removed.card)}。`;
@@ -4259,11 +4949,12 @@ export const playCardFromHand = (
     if (!used) {
       return game;
     }
-    discardCards(game, [used]);
+    const playedSha = normalizeCardUsedAsSha(game, actor, used);
+    discardCards(game, [playedSha]);
     const damage = 1 + game.turn.drunkShaBonus;
     markShaPlayedThisTurn(game, actor);
     game.turn.drunkShaBonus = 0;
-    resolveShaAgainstTarget(game, actor, target, used, damage);
+    resolveShaAgainstTarget(game, actor, target, playedSha, damage);
     evaluateWinner(game);
     return game;
   }
@@ -4408,12 +5099,13 @@ export const playCardFromHand = (
     if (!used) {
       return game;
     }
-    discardCards(game, [used]);
+    const playedSha = normalizeCardUsedAsSha(game, actor, used);
+    discardCards(game, [playedSha]);
     const damage = 1 + game.turn.drunkShaBonus;
     markShaPlayedThisTurn(game, actor);
     game.turn.drunkShaBonus = 0;
-    appendLog(game, `${actor.general.name} 将${formatCard(used)}当【杀】使用。`);
-    resolveShaAgainstTarget(game, actor, target, used, damage);
+    appendLog(game, `${actor.general.name} 将${formatCard(used)}当${formatCard(playedSha)}使用。`);
+    resolveShaAgainstTarget(game, actor, target, playedSha, damage);
     evaluateWinner(game);
     return game;
   }
@@ -4422,7 +5114,11 @@ export const playCardFromHand = (
   return game;
 };
 
-export const respondToSha = (source: GameState, useShan: boolean): GameState => {
+export const respondToSha = (
+  source: GameState,
+  useShan: boolean,
+  cardInstanceId?: string | null,
+): GameState => {
   const game = cloneGame(source);
   const pending = game.pendingAction;
   if (!pending || pending.type !== "shan_response") {
@@ -4438,7 +5134,12 @@ export const respondToSha = (source: GameState, useShan: boolean): GameState => 
   game.pendingAction = null;
 
   if (useShan && pending.canRespond) {
-    const shanIndex = findCardIndex(target, (card) => isCardUsableAsShan(target, card));
+    const shanIndex = cardInstanceId
+      ? target.hand.findIndex(
+          (card) =>
+            card.instance_id === cardInstanceId && isCardUsableAsShan(target, card),
+        )
+      : findCardIndex(target, (card) => isCardUsableAsShan(target, card));
     const shan =
       shanIndex >= 0
         ? removeCardAt(target, shanIndex, game)
@@ -4493,20 +5194,28 @@ export const respondToSha = (source: GameState, useShan: boolean): GameState => 
           );
         }
       }
+      if (sourceSeat?.alive) {
+        offerAfterShaDodgedWeaponResponse(
+          game,
+          sourceSeat,
+          target,
+          pending.card,
+          pending.damage,
+          pending.damageType,
+        );
+      }
       return game;
     }
     appendLog(game, `${target.general.name} 没有【闪】。`);
   }
 
   game.pendingAction = null;
-  applyDamage(
-    game,
-    pending.sourceSeatId,
-    target,
-    pending.damage,
-    pending.damageType,
-    pending.card,
-  );
+  const sourceSeat = game.seats[pending.sourceSeatId];
+  if (sourceSeat?.alive) {
+    dealShaDamageAfterHit(game, sourceSeat, target, pending.damage, pending.damageType, pending.card);
+  } else {
+    applyDamage(game, pending.sourceSeatId, target, pending.damage, pending.damageType, pending.card);
+  }
   evaluateWinner(game);
   return game;
 };
@@ -4550,6 +5259,112 @@ export const respondToLiuli = (
 
   appendLog(game, `${targetSeat.general.name} 不发动【流离】。`);
   resolveShaAfterLiuli(game, sourceSeat, targetSeat, pending.card, pending.damage);
+  evaluateWinner(game);
+  return game;
+};
+
+export const respondToCixiongSword = (
+  source: GameState,
+  discardHand: boolean,
+): GameState => {
+  const game = cloneGame(source);
+  const pending = game.pendingAction;
+  if (!pending || pending.type !== "cixiong_response") {
+    return game;
+  }
+
+  const sourceSeat = game.seats[pending.sourceSeatId];
+  const targetSeat = game.seats[pending.targetSeatId];
+  game.pendingAction = null;
+  if (!sourceSeat?.alive || !targetSeat?.alive) {
+    return game;
+  }
+
+  if (discardHand && targetSeat.hand.length > 0) {
+    const cost = removeCardAt(targetSeat, 0, game);
+    discardCards(game, [cost]);
+    appendLog(game, `${targetSeat.general.name} 因【雌雄双股剑】弃置${formatCard(cost)}。`);
+  } else {
+    drawFromPile(game, sourceSeat, 1);
+    appendLog(game, `${targetSeat.general.name} 不弃置手牌，${sourceSeat.general.name} 因【雌雄双股剑】摸1张牌。`);
+  }
+
+  continueShaAfterCixiong(game, sourceSeat, targetSeat, pending.card, pending.damage);
+  evaluateWinner(game);
+  return game;
+};
+
+export const respondToHanbingSword = (
+  source: GameState,
+  useSkill: boolean,
+): GameState => {
+  const game = cloneGame(source);
+  const pending = game.pendingAction;
+  if (!pending || pending.type !== "hanbing_response") {
+    return game;
+  }
+
+  const sourceSeat = game.seats[pending.sourceSeatId];
+  const targetSeat = game.seats[pending.targetSeatId];
+  game.pendingAction = null;
+  if (!sourceSeat?.alive || !targetSeat?.alive) {
+    return game;
+  }
+
+  if (useSkill && countDiscardableZoneCards(targetSeat) >= 2) {
+    const discarded = discardCardsForHanbing(game, targetSeat);
+    appendLog(
+      game,
+      `${sourceSeat.general.name} 发动【寒冰剑】，防止伤害并弃置 ${targetSeat.general.name} 的 ${discarded.map(formatCard).join("、")}。`,
+    );
+    setLastEffect(game, sourceSeat, getEquippedCard(sourceSeat, "weapon") ?? pending.card, `${sourceSeat.general.name} 发动【寒冰剑】。`, targetSeat, "弃2");
+  } else {
+    appendLog(game, `${sourceSeat.general.name} 不发动【寒冰剑】。`);
+    applyDamage(game, sourceSeat.id, targetSeat, pending.damage, pending.damageType, pending.card);
+  }
+
+  evaluateWinner(game);
+  return game;
+};
+
+export const respondToQilingong = (
+  source: GameState,
+  optionKey: string | null,
+): GameState => {
+  const game = cloneGame(source);
+  const pending = game.pendingAction;
+  if (!pending || pending.type !== "qilingong_response") {
+    return game;
+  }
+
+  const sourceSeat = game.seats[pending.sourceSeatId];
+  const targetSeat = game.seats[pending.targetSeatId];
+  game.pendingAction = null;
+  if (!sourceSeat?.alive || !targetSeat?.alive) {
+    return game;
+  }
+
+  if (optionKey && pending.mountOptions.some((option) => option.key === optionKey)) {
+    const discarded = discardQilingongMountByKey(game, targetSeat, optionKey);
+    if (discarded) {
+      appendLog(game, `${sourceSeat.general.name} 发动【麒麟弓】，弃置 ${targetSeat.general.name} 的坐骑${formatCard(discarded)}。`);
+      setLastEffect(game, sourceSeat, getEquippedCard(sourceSeat, "weapon") ?? pending.damageCard, `${sourceSeat.general.name} 发动【麒麟弓】。`, targetSeat, "弃马");
+    }
+  } else {
+    appendLog(game, `${sourceSeat.general.name} 不发动【麒麟弓】。`);
+  }
+
+  if (!game.pendingAction && !game.winner) {
+    continueAfterDamageAndBeige(
+      game,
+      pending.sourceSeatId,
+      targetSeat,
+      pending.amount,
+      pending.damageType,
+      pending.damageCard,
+      pending.transmittedTargetIds,
+    );
+  }
   evaluateWinner(game);
   return game;
 };
@@ -4912,6 +5727,7 @@ export const respondToLeiji = (
 export const respondToBasicCard = (
   source: GameState,
   action: "card" | "wuxie" | "pass",
+  cardInstanceId?: string | null,
 ): GameState => {
   const game = cloneGame(source);
   const pending = game.pendingAction;
@@ -4945,7 +5761,7 @@ export const respondToBasicCard = (
       chainSeatIds: [],
       message: pending.message,
     };
-    const usedPending = playWuxieIntoChain(game, wuxiePending, target);
+    const usedPending = playWuxieIntoChain(game, wuxiePending, target, cardInstanceId);
     if (usedPending) {
       continueWuxieContest(game, usedPending, nextAliveSeatId(game, target.id));
       return game;
@@ -4954,10 +5770,12 @@ export const respondToBasicCard = (
   }
 
   if (action === "card") {
-    const responseIndex = findCardIndex(
-      target,
-      responsePredicateForSeat(target, pending.requiredCard),
-    );
+    const predicate = responsePredicateForSeat(target, pending.requiredCard);
+    const responseIndex = cardInstanceId
+      ? target.hand.findIndex(
+          (card) => card.instance_id === cardInstanceId && predicate(card),
+        )
+      : findCardIndex(target, predicate);
     const response =
       responseIndex >= 0
         ? removeCardAt(target, responseIndex, game)
@@ -5017,6 +5835,7 @@ export const respondToBasicCard = (
 export const respondToWuxie = (
   source: GameState,
   useWuxie: boolean,
+  cardInstanceId?: string | null,
 ): GameState => {
   const game = cloneGame(source);
   const pending = game.pendingAction;
@@ -5033,7 +5852,7 @@ export const respondToWuxie = (
   game.pendingAction = null;
 
   if (useWuxie) {
-    const usedPending = playWuxieIntoChain(game, pending, responder);
+    const usedPending = playWuxieIntoChain(game, pending, responder, cardInstanceId);
     if (usedPending) {
       continueWuxieContest(game, usedPending, nextAliveSeatId(game, responder.id));
       return game;
@@ -5055,6 +5874,7 @@ export const respondToWuxie = (
 export const respondToDuelSha = (
   source: GameState,
   useShaCard: boolean,
+  cardInstanceId?: string | null,
 ): GameState => {
   const game = cloneGame(source);
   const pending = game.pendingAction;
@@ -5071,7 +5891,12 @@ export const respondToDuelSha = (
 
   game.pendingAction = null;
   if (useShaCard) {
-    const shaIndex = findCardIndex(current, (card) => isCardUsableAsSha(current, card));
+    const shaIndex = cardInstanceId
+      ? current.hand.findIndex(
+          (card) =>
+            card.instance_id === cardInstanceId && isCardUsableAsSha(current, card),
+        )
+      : findCardIndex(current, (card) => isCardUsableAsSha(current, card));
     const sha =
       shaIndex >= 0
         ? removeCardAt(current, shaIndex, game)
@@ -5122,6 +5947,79 @@ export const respondToDuelSha = (
   return game;
 };
 
+export const respondToGuanshiForce = (
+  source: GameState,
+  cardInstanceIds: string[],
+): GameState => {
+  const game = cloneGame(source);
+  const pending = game.pendingAction;
+  if (!pending || pending.type !== "guanshi_force_response") {
+    return game;
+  }
+
+  const sourceSeat = game.seats[pending.sourceSeatId];
+  const targetSeat = game.seats[pending.targetSeatId];
+  game.pendingAction = null;
+  if (!sourceSeat?.alive || !targetSeat?.alive) {
+    return game;
+  }
+
+  const selectedIds = [...new Set(cardInstanceIds)].slice(0, 2);
+  if (selectedIds.length === 2) {
+    const discarded = selectedIds
+      .map((id) => discardOwnCardById(game, sourceSeat, id))
+      .filter((item): item is DeckInstance => Boolean(item));
+    if (discarded.length === 2) {
+      discardCards(game, discarded);
+      appendLog(game, `${sourceSeat.general.name} 发动【贯石斧】，弃置 ${discarded.map(formatCard).join("、")}，令${formatCard(pending.card)}强制命中。`);
+      setLastEffect(game, sourceSeat, getEquippedCard(sourceSeat, "weapon") ?? pending.card, `${sourceSeat.general.name} 发动【贯石斧】。`, targetSeat, "强命中");
+      applyDamage(game, sourceSeat.id, targetSeat, pending.damage, pending.damageType, pending.card);
+      evaluateWinner(game);
+      return game;
+    }
+  }
+
+  appendLog(game, `${sourceSeat.general.name} 不发动【贯石斧】。`);
+  offerQinglongAfterShaDodged(game, sourceSeat, targetSeat, pending.card);
+  return game;
+};
+
+export const respondToQinglongFollowup = (
+  source: GameState,
+  cardInstanceId: string | null,
+): GameState => {
+  const game = cloneGame(source);
+  const pending = game.pendingAction;
+  if (!pending || pending.type !== "qinglong_followup_response") {
+    return game;
+  }
+
+  const sourceSeat = game.seats[pending.sourceSeatId];
+  const targetSeat = game.seats[pending.targetSeatId];
+  game.pendingAction = null;
+  if (!sourceSeat?.alive || !targetSeat?.alive) {
+    return game;
+  }
+
+  if (cardInstanceId && pending.shaCardIds.includes(cardInstanceId)) {
+    const followup = removeCardFromHand(sourceSeat, cardInstanceId, game);
+    if (followup && isCardUsableAsSha(sourceSeat, followup)) {
+      const playedSha = normalizeCardUsedAsSha(game, sourceSeat, followup);
+      discardCards(game, [playedSha]);
+      markShaPlayedThisTurn(game, sourceSeat);
+      const message = `${sourceSeat.general.name} 发动【青龙偃月刀】，追加使用${formatCard(playedSha)}。`;
+      appendLog(game, message);
+      setLastEffect(game, sourceSeat, playedSha, message, targetSeat, "追杀");
+      resolveShaAgainstTarget(game, sourceSeat, targetSeat, playedSha, 1);
+      evaluateWinner(game);
+      return game;
+    }
+  }
+
+  appendLog(game, `${sourceSeat.general.name} 不发动【青龙偃月刀】。`);
+  return game;
+};
+
 export const respondToHuogongDiscard = (
   source: GameState,
   cardInstanceId: string | null,
@@ -5167,6 +6065,7 @@ export const respondToHuogongDiscard = (
 export const respondToJiedaoSha = (
   source: GameState,
   useShaCard: boolean,
+  cardInstanceId?: string | null,
 ): GameState => {
   const game = cloneGame(source);
   const pending = game.pendingAction;
@@ -5184,11 +6083,14 @@ export const respondToJiedaoSha = (
 
   game.pendingAction = null;
   if (useShaCard) {
-    const shaIndex = findCardIndex(weaponOwner, (card) =>
-      isCardUsableAsSha(weaponOwner, card),
-    );
+    const shaIndex = cardInstanceId
+      ? weaponOwner.hand.findIndex(
+          (card) =>
+            card.instance_id === cardInstanceId && isCardUsableAsSha(weaponOwner, card),
+        )
+      : findCardIndex(weaponOwner, (card) => isCardUsableAsSha(weaponOwner, card));
     if (shaIndex >= 0) {
-      const sha = removeCardAt(weaponOwner, shaIndex, game);
+      const sha = normalizeCardUsedAsSha(game, weaponOwner, removeCardAt(weaponOwner, shaIndex, game));
       discardCards(game, [sha]);
       markShaPlayedThisTurn(game, weaponOwner);
       const message = `${weaponOwner.general.name} 响应${formatCard(pending.card)}，对 ${victim.general.name} 使用${formatCard(sha)}。`;
@@ -5202,6 +6104,40 @@ export const respondToJiedaoSha = (
   }
 
   giveWeaponToSource(game, actor, weaponOwner, pending.card, pending.weapon);
+  return game;
+};
+
+export const respondToGuoheSelect = (
+  source: GameState,
+  optionKey: string,
+): GameState => {
+  const game = cloneGame(source);
+  const pending = game.pendingAction;
+  if (!pending || pending.type !== "guohe_select_response") {
+    return game;
+  }
+
+  const actor = game.seats[pending.sourceSeatId];
+  const target = game.seats[pending.targetSeatId];
+  game.pendingAction = null;
+  if (!actor?.alive || !target?.alive) {
+    return game;
+  }
+
+  if (!pending.options.some((option) => option.key === optionKey)) {
+    appendLog(game, "请选择一个可拆除的区域或牌。");
+    return game;
+  }
+
+  const removed = removeZoneCardByOptionKey(game, target, optionKey);
+  if (!removed.card) {
+    appendLog(game, "过河拆桥目标牌不存在。");
+    return game;
+  }
+  discardCards(game, [removed.card]);
+  const message = `${actor.general.name} 对 ${target.general.name} 使用${formatCard(pending.card)}，弃置其${removed.zone}${formatCard(removed.card)}。`;
+  appendLog(game, message);
+  setLastEffect(game, actor, pending.card, message, target, "拆");
   return game;
 };
 
@@ -5455,7 +6391,7 @@ const removeQiaobianFieldCard = (
   if (equipmentIndex >= 0) {
     const [card] = seat.equipment.splice(equipmentIndex, 1);
     if (game) {
-      triggerXiaojiIfEquipmentLost(game, seat, card);
+      triggerEquipmentLost(game, seat, card);
     }
     return { card, zone: "装备区" };
   }
@@ -5926,9 +6862,9 @@ const activateRende = (game: GameState, seat: Seat) => {
     appendLog(game, `${seat.general.name} 没有手牌，不能发动【仁德】。`);
     return;
   }
-  const recipient = chooseSkillAlly(game, seat) ?? aliveTargets(game, seat)[0];
+  const recipient = chooseSkillAlly(game, seat);
   if (!recipient) {
-    appendLog(game, `${seat.general.name} 没有可交给手牌的目标。`);
+    appendLog(game, `${seat.general.name} 没有合适的友方目标，暂不发动【仁德】。`);
     return;
   }
   const count = Math.min(seat.hand.length, seat.hp < seat.maxHp ? 2 : 1);
@@ -6046,7 +6982,7 @@ const activateQiangxi = (game: GameState, seat: Seat) => {
   if (equippedWeaponIndex >= 0) {
     const [weapon] = seat.equipment.splice(equippedWeaponIndex, 1);
     discardCards(game, [weapon]);
-    triggerXiaojiIfEquipmentLost(game, seat, weapon);
+    triggerEquipmentLost(game, seat, weapon);
     appendLog(game, `${seat.general.name} 发动【强袭】，弃置武器${formatCard(weapon)}。`);
   } else {
     loseHp(game, seat, 1, "【强袭】");
@@ -6204,7 +7140,7 @@ const activateShensu = (game: GameState, seat: Seat, selectedTarget?: Seat | nul
   }
   const [cost] = seat.equipment.splice(equipmentIndex, 1);
   discardCards(game, [cost]);
-  triggerXiaojiIfEquipmentLost(game, seat, cost);
+  triggerEquipmentLost(game, seat, cost);
   const virtualSha = makeSkillShaCard(cost);
   game.turn.skipPlay = true;
   markShaPlayedThisTurn(game, seat);
@@ -6900,7 +7836,11 @@ const performAiPlay = (game: GameState, seat: Seat) => {
       appendLog(game, message);
       setLastEffect(game, seat, jiu, message, undefined, "+杀");
     }
-    const sha = removeCardAt(seat, shaIndex > jiuIndex && jiuIndex >= 0 ? shaIndex - 1 : shaIndex, game);
+    const sha = normalizeCardUsedAsSha(
+      game,
+      seat,
+      removeCardAt(seat, shaIndex > jiuIndex && jiuIndex >= 0 ? shaIndex - 1 : shaIndex, game),
+    );
     discardCards(game, [sha]);
     const damage = 1 + game.turn.drunkShaBonus;
     markShaPlayedThisTurn(game, seat);

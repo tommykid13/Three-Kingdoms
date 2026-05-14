@@ -609,3 +609,36 @@ Original prompt: 我想制作单人三国杀游戏，8人局，游戏卡牌和�
     - `document.title`, table header, and `render_game_to_text().mode` all equal `肥喵多尼的AI三国杀`.
     - Start screen, start-game flow, board rendering, AI advance, discard resolution, trick display, and skill judgment response were observed.
     - Screenshots inspected: `output/final-1.0/ui-board-title.png` and `output/final-1.0/ui-after-automation.png`.
+
+- Latest update:
+  - Implemented the 1.1 equipment/response sweep:
+    - Human response windows now let the player choose the exact `Sha`, `Shan`, and `Wuxie` card to play, including Nanman/Wanjian/Juedou/Jiedao response windows.
+    - Added `Guanshi Axe` post-dodge discard-2 force-hit and `Green Dragon Crescent Blade` post-dodge follow-up Sha prompts.
+    - Added armor/weapon effects for `Tengjia`, `Guding Blade`, `Renwang Shield`, `Bagua Formation`, and `Silver Lion`, including linked fire damage and Huogong fire damage adjustment.
+    - Added human `Guohe Chaiqiao` zone/card picker for random hand, equipment, and judgment-zone cards.
+    - Tightened AI ally targeting so rebel `Rende` and AI `Yiji` do not hand resources to the lord unless strategically allied.
+  - Added and ran rule smoke tests under `output/equipment-response-sweep/`:
+    - Exact selected Shan/Sha response cards.
+    - Guanshi, Qinglong, Tengjia normal/fire, Huogong+Tengjia, Guding, Renwang, Bagua, Baiyin, Guohe zone choice, Wuxie cancel/counter-Wuxie, rebel Rende no-lord-feed, and repeated Luanji.
+  - Verified `npm run build` passes.
+  - Standard `develop-web-game` Playwright client was attempted and still cannot launch because bundled Chromium is missing at `C:\Users\Tommy Deng\AppData\Local\ms-playwright\chromium_headless_shell-1217\chrome-headless-shell-win64\chrome-headless-shell.exe`.
+  - System Edge fallback UI verification passed with empty console errors:
+    - Setup screen renders, start-game works, board renders, player hand renders, and `render_game_to_text().mode` is `肥喵多尼的AI三国杀`.
+    - Screenshot inspected: `output/equipment-response-sweep/ui-board.png`.
+  - Legacy `output/final-1.0/run-regression.ps1` now has one outdated expectation: `manual-trigger-batch7` still expects manual `Keji` and `Biyue`, but current game rules intentionally auto-trigger those per user request. The remaining regression scripts plus the new equipment sweep pass.
+
+- Latest update:
+  - Started the equipment completeness pass beyond the first 1.1 sweep.
+  - Added real `青釭剑` armor-ignore handling for Sha damage and Sha responses:
+    - bypasses `仁王盾` black-Sha immunity,
+    - bypasses `藤甲` normal-Sha immunity and fire-damage bonus,
+    - bypasses `八卦阵` auto-Shan,
+    - bypasses `白银狮子` damage cap.
+  - Added `朱雀羽扇`: normal Sha becomes fire Sha, including virtual Sha produced by skills and AI follow-up attacks.
+  - Added `藤甲` immunity to `南蛮入侵` and `万箭齐发`.
+  - Added `八卦阵` auto-judgment for `万箭齐发` Shan responses.
+  - Added `白银狮子` heal when lost from the equipment area.
+  - Added `雌雄双股剑`, `寒冰剑`, and `麒麟弓` rule flow plus player response panels.
+  - Verified `npm run build` passes.
+  - Ran system Edge browser-module regression with no console errors; artifacts saved under `output/equipment-completeness/`.
+  - Remaining separate interaction pass: `方天画戟` final-hand multi-target Sha and `丈八蛇矛` two-card-as-Sha use/response.
