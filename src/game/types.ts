@@ -6,6 +6,14 @@ export type Phase = "准备" | "判定" | "摸牌" | "出牌" | "弃牌" | "结�
 export type DamageType = "normal" | "fire" | "thunder";
 export type WinnerSide = "主忠" | "反贼" | "内奸";
 export type EquipmentSlot = "weapon" | "armor" | "offensiveMount" | "defensiveMount";
+export type DeclaredSuit = "黑桃" | "红桃" | "梅花" | "方片";
+
+export type ShaContinuation = {
+  sourceSeatId: number;
+  card: DeckInstance;
+  damage: number;
+  remainingTargetIds: number[];
+};
 
 export type LeijiResume =
   | {
@@ -115,6 +123,7 @@ export type PendingAction =
         | "taoyuan_heal"
         | "wugu_gain"
         | "tiesuo_toggle"
+        | "delayed_trick"
         | "delayed_skip_draw"
         | "delayed_skip_play"
         | "delayed_damage";
@@ -153,6 +162,27 @@ export type PendingAction =
       message: string;
     }
   | {
+      type: "xiangle_response";
+      sourceSeatId: number;
+      targetSeatId: number;
+      card: DeckInstance;
+      damage: number;
+      damageType: DamageType;
+      basicCardIds: string[];
+      message: string;
+    }
+  | {
+      type: "qiangxi_cost_response";
+      sourceSeatId: number;
+      targetSeatId: number;
+      weaponOptions: Array<{
+        key: string;
+        zone: "手牌" | "装备区";
+        card: DeckInstance;
+      }>;
+      message: string;
+    }
+  | {
       type: "qinglong_followup_response";
       sourceSeatId: number;
       targetSeatId: number;
@@ -166,6 +196,7 @@ export type PendingAction =
       targetSeatId: number;
       card: DeckInstance;
       damage: number;
+      handCardIds: string[];
       message: string;
     }
   | {
@@ -175,6 +206,12 @@ export type PendingAction =
       card: DeckInstance;
       damage: number;
       damageType: DamageType;
+      options: Array<{
+        key: string;
+        zone: "手牌" | "装备区" | "判定区";
+        label: string;
+        card?: DeckInstance;
+      }>;
       message: string;
     }
   | {
@@ -206,6 +243,34 @@ export type PendingAction =
       message: string;
     }
   | {
+      type: "shunshou_select_response";
+      sourceSeatId: number;
+      targetSeatId: number;
+      card: DeckInstance;
+      options: Array<{
+        key: string;
+        zone: "手牌" | "装备区" | "判定区";
+        label: string;
+        card?: DeckInstance;
+      }>;
+      message: string;
+    }
+  | {
+      type: "mengjin_response";
+      sourceSeatId: number;
+      targetSeatId: number;
+      card: DeckInstance;
+      damage: number;
+      damageType: DamageType;
+      options: Array<{
+        key: string;
+        zone: "手牌" | "装备区" | "判定区";
+        label: string;
+        card?: DeckInstance;
+      }>;
+      message: string;
+    }
+  | {
       type: "huogong_discard";
       sourceSeatId: number;
       targetSeatId: number;
@@ -221,6 +286,15 @@ export type PendingAction =
       victimSeatId: number;
       card: DeckInstance;
       weapon: DeckInstance;
+      canRespond: boolean;
+      message: string;
+    }
+  | {
+      type: "qihu_sha_response";
+      sourceSeatId: number;
+      forcedSeatId: number;
+      victimSeatId: number;
+      card: DeckInstance;
       canRespond: boolean;
       message: string;
     }
@@ -321,6 +395,19 @@ export type PendingAction =
       message: string;
     }
   | {
+      type: "beige_club_discard_response";
+      singerSeatId: number;
+      targetSeatId: number;
+      sourceSeatId: number;
+      amount: number;
+      damageType: DamageType;
+      damageCard: DeckInstance;
+      transmittedTargetIds: number[];
+      discardableCardIds: string[];
+      requiredCount: number;
+      message: string;
+    }
+  | {
       type: "fankui_response";
       targetSeatId: number;
       sourceSeatId: number;
@@ -348,6 +435,7 @@ export type PendingAction =
       nextSkillIndex: number;
       drawCount: number;
       validTargetIds: number[];
+      revealedCards?: DeckInstance[];
       message: string;
     }
   | {
@@ -382,6 +470,25 @@ export type PendingAction =
       damageCard?: DeckInstance;
       transmittedTargetIds: number[];
       nextSkillIndex: number;
+      message: string;
+    }
+  | {
+      type: "ganglie_cost_response";
+      targetSeatId: number;
+      sourceSeatId: number;
+      amount: number;
+      damageType: DamageType;
+      damageCard?: DeckInstance;
+      transmittedTargetIds: number[];
+      nextSkillIndex: number;
+      discardableCardIds: string[];
+      message: string;
+    }
+  | {
+      type: "fanjian_suit_response";
+      sourceSeatId: number;
+      targetSeatId: number;
+      card: DeckInstance;
       message: string;
     }
   | {
@@ -450,6 +557,26 @@ export type PendingAction =
       type: "qiaobian_play_move";
       seatId: number;
       message: string;
+    }
+  | {
+      type: "shensu_response";
+      seatId: number;
+      mode: "skip_judge_draw" | "skip_play";
+      validTargetIds: number[];
+      equipmentCardIds: string[];
+      message: string;
+    }
+  | {
+      type: "fangquan_play_response";
+      seatId: number;
+      message: string;
+    }
+  | {
+      type: "fangquan_end_response";
+      seatId: number;
+      validTargetIds: number[];
+      discardableCardIds: string[];
+      message: string;
     };
 
 export type Winner = {
@@ -481,6 +608,7 @@ export type Seat = {
   maxHp: number;
   alive: boolean;
   chained: boolean;
+  turnedOver: boolean;
   awakenedSkills: string[];
   buquMarks: DeckInstance[];
   hand: DeckInstance[];
@@ -499,16 +627,20 @@ export type TurnState = {
   phase: Phase;
   phaseStep: number;
   shaPlayed: boolean;
+  shaUsedCount?: number;
   jiuUsed: boolean;
   drunkShaBonus: number;
   luoyiActive: boolean;
   skipDraw: boolean;
   skipPlay: boolean;
   usedSkills: string[];
+  rendeGivenCount: number;
+  rendeRecovered: boolean;
   tianyiState?: "won" | "lost" | null;
   shuangxiongColor?: "red" | "black" | null;
   fangquanTargetSeatId?: number | null;
   fangquanCostCardId?: string | null;
+  fangquanResolved?: boolean;
   extraTurnReturnSeatId?: number | null;
   extraTurnReturnRound?: number | null;
 };
@@ -518,6 +650,7 @@ export type GameState = {
   seats: Seat[];
   piles: Piles;
   turn: TurnState;
+  shaContinuation: ShaContinuation | null;
   pendingAction: PendingAction | null;
   winner: Winner | null;
   lastEffect: ActionEffect | null;

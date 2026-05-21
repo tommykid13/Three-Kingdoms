@@ -12,6 +12,7 @@ import {
   advanceGame,
   activateSkill,
   activateSkillWithSelection,
+  continuePendingShaTargets,
   confirmDiscard,
   distanceBetweenSeats,
   finishAiPlayPhase,
@@ -22,15 +23,34 @@ import {
   getHandLimit,
   getAttackRange,
   getEquipmentSlot,
+  getGuoseTargetIds,
   getJiedaoVictimIds,
+  getLianhuanTargetIds,
+  getLongdanTargetIds,
+  getLongdanTargetLimit,
+  getQixiTargetIds,
   getShensuTargetIds,
+  getShuangxiongTargetIds,
+  getWushengTargetIds,
+  getWushengTargetLimit,
+  getZhangbaPlayInfo,
   getVisibleRole,
+  isMaleSeat,
+  canUseGuoseCard,
+  canUseLianhuanCard,
+  canUseLongdanShaCard,
+  canUseQixiCard,
+  canUseShuangxiongCard,
+  canUseWushengCard,
+  canUseZhangbaSha,
   isCardUsableAsSha,
   isCardUsableAsShan,
   isWuxie,
+  offerHumanPlayPhaseOpeningPrompt,
   offerQiaobianPhase,
   passDyingResponse,
   playCardFromHand,
+  playZhangbaShaFromHand,
   playDyingCard,
   respondToQiaobianDrawTargets,
   respondToQiaobianPhase,
@@ -41,17 +61,25 @@ import {
   respondToDuelSha,
   respondToDrawSkill,
   respondToEndSkill,
+  respondToFangquanEnd,
+  respondToFangquanPlay,
   respondToFankui,
+  respondToFanjianSuit,
   respondToGanglie,
+  respondToGanglieCost,
   respondToGuanshiForce,
   respondToGuoheSelect,
   respondToHanbingSword,
   respondToHuogongDiscard,
   respondToJiedaoSha,
   respondToJudgeReplace,
+  respondToMengjin,
   respondToQilingong,
+  respondToQihuSha,
+  respondToQiangxiCost,
   respondToSkillJudgeReplace,
   respondToBeige,
+  respondToBeigeClubDiscard,
   respondToJianxiong,
   respondToJieming,
   respondToKeji,
@@ -60,12 +88,15 @@ import {
   respondToLiuli,
   respondToLuoshen,
   respondToSha,
+  respondToShensu,
+  respondToShunshouSelect,
   respondToTianxiang,
   respondToTiandu,
   respondToSkillTiandu,
   respondToTuxi,
   respondToWuguSelect,
   respondToWuxie,
+  respondToXiangle,
   respondToXiaoji,
   respondToYiji,
   setPaused,
@@ -83,7 +114,8 @@ import {
   type AiProviderConfig,
   type AiProviderId,
 } from "./game/llmAi";
-import type { GameState, PendingAction, Role, Seat } from "./game/types";
+import type { DeclaredSuit, GameState, PendingAction, Role, Seat } from "./game/types";
+import type { YijiAssignment } from "./game/turn";
 import "./styles.css";
 
 declare global {
@@ -190,31 +222,61 @@ const activeSkillNames = new Set([
   "离间",
   "驱虎",
   "结姻",
-  "神速",
+  "放权",
   "黄天",
   "天义",
-  "放权",
 ]);
 
 const manualSkillNames = new Set([
+  "武圣",
+  "奇袭",
+  "国色",
+  "连环",
+  "双雄",
+  "龙胆",
   "仁德",
+  "制衡",
   "反间",
+  "青囊",
+  "强袭",
+  "乱击",
   "离间",
   "驱虎",
-  "神速",
+  "结姻",
+  "放权",
   "黄天",
   "天义",
-  "放权",
 ]);
 
 const manualSkillCardLimit = (skillName: string | null) =>
-  skillName === "仁德" ? Number.POSITIVE_INFINITY : skillName === "神速" ? 0 : 1;
+  skillName === "仁德" || skillName === "制衡"
+    ? Number.POSITIVE_INFINITY
+    : skillName === "乱击" || skillName === "结姻"
+      ? 2
+      : skillName === "强袭"
+        ? 0
+        : 1;
 
 const isManualSkillCardSelectable = (
   skillName: string | null,
   card: DeckInstance,
+  seat?: Seat | null,
+  game?: GameState | null,
 ) => {
-  if (!skillName || skillName === "神速") return false;
+  if (!skillName || skillName === "强袭") return false;
+  if (skillName === "神速") {
+    return Boolean(
+      seat?.equipment.some(
+        (equipment) => equipment.instance_id === card.instance_id && getEquipmentSlot(equipment),
+      ),
+    );
+  }
+  if (skillName === "武圣") return Boolean(seat && canUseWushengCard(seat, card));
+  if (skillName === "奇袭") return Boolean(seat && canUseQixiCard(seat, card));
+  if (skillName === "国色") return Boolean(seat && canUseGuoseCard(seat, card));
+  if (skillName === "连环") return Boolean(seat && canUseLianhuanCard(seat, card));
+  if (skillName === "双雄") return Boolean(game && seat && canUseShuangxiongCard(game, seat, card));
+  if (skillName === "龙胆") return Boolean(seat && canUseLongdanShaCard(seat, card));
   if (skillName === "黄天") return card.card_id === "shan" || card.card_id === "shandian";
   return true;
 };
@@ -225,6 +287,12 @@ const manualSkillCardLabel = (
 ) => {
   if (!skillName) return undefined;
   if (selected) return "已选";
+  if (skillName === "武圣") return "当杀";
+  if (skillName === "奇袭") return "当拆";
+  if (skillName === "国色") return "当乐";
+  if (skillName === "连环") return "连环";
+  if (skillName === "双雄") return "决斗";
+  if (skillName === "龙胆") return "当杀";
   if (skillName === "仁德") return "交给";
   if (skillName === "驱虎" || skillName === "天义") return "拼点";
   if (skillName === "黄天") return "交给";
@@ -249,6 +317,52 @@ const hasSelectableZoneCard = (seat: Seat) =>
 
 const getQiaobianFieldCards = (seat: Seat) => [...seat.equipment, ...seat.judgeArea];
 
+const getPlayerOwnedCard = (seat: Seat | null, cardInstanceId: string | null) =>
+  cardInstanceId && seat
+    ? seat.hand.find((card) => card.instance_id === cardInstanceId) ??
+      seat.equipment.find((card) => card.instance_id === cardInstanceId) ??
+      null
+    : null;
+
+const getPlayerShaResponseCards = (seat: Seat | null) =>
+  seat
+    ? [
+        ...seat.hand.filter((card) => isCardUsableAsSha(seat, card)),
+        ...seat.equipment.filter((card) => isCardUsableAsSha(seat, card)),
+      ]
+    : [];
+
+const naturalShaCardIds = new Set(["sha", "huosha", "leisha"]);
+
+const isLongdanAsShanCard = (seat: Seat, card: DeckInstance) =>
+  hasSkillByName(seat, "龙胆") && naturalShaCardIds.has(card.card_id);
+
+const isLongdanAsShaCard = (seat: Seat, card: DeckInstance) =>
+  hasSkillByName(seat, "龙胆") && card.card_id === "shan";
+
+const getShanResponseCardsForMode = (
+  seat: Seat | null,
+  useLongdan: boolean,
+) =>
+  seat
+    ? seat.hand.filter(
+        (card) =>
+          isCardUsableAsShan(seat, card) &&
+          (useLongdan ? isLongdanAsShanCard(seat, card) : !isLongdanAsShanCard(seat, card)),
+      )
+    : [];
+
+const getShaResponseCardsForMode = (
+  seat: Seat | null,
+  useLongdan: boolean,
+) =>
+  seat
+    ? getPlayerShaResponseCards(seat).filter(
+        (card) =>
+          useLongdan ? isLongdanAsShaCard(seat, card) : !isLongdanAsShaCard(seat, card),
+      )
+    : [];
+
 const canMoveQiaobianCardToSeat = (
   sourceSeat: Seat,
   targetSeat: Seat,
@@ -262,6 +376,9 @@ const canMoveQiaobianCardToSeat = (
     return !targetSeat.equipment.some((item) => getEquipmentSlot(item) === slot);
   }
   if (card.card_id === "lebusishu" || card.card_id === "bingliangcunduan" || card.card_id === "shandian") {
+    if (card.card_id === "lebusishu" && hasSkillByName(targetSeat, "谦逊")) {
+      return false;
+    }
     return !targetSeat.judgeArea.some((item) => item.card_id === card.card_id);
   }
   return false;
@@ -483,7 +600,8 @@ const SeatPanel = ({
   onPreviewGeneral?: (general: General) => void;
 }) => (
   <article
-    className={`seat-panel seat-${seat.id}${seat.role === "主公" ? " is-lord-seat" : ""}${active ? " is-active" : ""}${targetable ? " is-targetable" : ""}${targetSelected ? " is-target-selected" : ""}${needsAction ? " is-needs-action" : ""}${!seat.alive ? " is-dead" : ""}`}
+    className={`seat-panel seat-${seat.id}${seat.role === "主公" ? " is-lord-seat" : ""}${active ? " is-active" : ""}${targetable ? " is-targetable" : ""}${targetSelected ? " is-target-selected" : ""}${needsAction ? " is-needs-action" : ""}${seat.turnedOver ? " is-turned-over" : ""}${!seat.alive ? " is-dead" : ""}`}
+    onClick={targetable ? onTarget : undefined}
     data-testid={`seat-${seat.id}`}
   >
     {effectPulse ? (
@@ -510,7 +628,10 @@ const SeatPanel = ({
     <button
       type="button"
       className="seat-portrait"
-      onClick={() => onPreviewGeneral?.(seat.general)}
+      onClick={(event) => {
+        event.stopPropagation();
+        onPreviewGeneral?.(seat.general);
+      }}
       aria-label={`查看${seat.general.name}武将图`}
     >
       <img
@@ -538,6 +659,7 @@ const SeatPanel = ({
         <span>距玩家 {distanceFromPlayer}</span>
         <span>判定 {seat.judgeArea.length}</span>
         {seat.chained ? <span className="chain-chip">连环</span> : null}
+        {seat.turnedOver ? <span className="turned-over-chip">翻面</span> : null}
       </div>
       {seat.equipment.length > 0 ? (
         <div className="seat-zone equipment-zone is-filled">
@@ -587,7 +709,10 @@ const SeatPanel = ({
         <button
           type="button"
           className="target-button"
-          onClick={onTarget}
+          onClick={(event) => {
+            event.stopPropagation();
+            onTarget?.();
+          }}
           data-testid={`target-seat-${seat.id}`}
         >
           {targetSelected ? "已选择" : "选择目标"}
@@ -905,12 +1030,18 @@ const actionRequiredSeatId = (pending: PendingAction | null): number | null => {
     case "huogong_discard":
       return pending.sourceSeatId;
     case "guanshi_force_response":
+    case "xiangle_response":
+    case "qiangxi_cost_response":
     case "qinglong_followup_response":
     case "guohe_select_response":
+    case "shunshou_select_response":
+    case "mengjin_response":
     case "hanbing_response":
     case "qilingong_response":
       return pending.sourceSeatId;
     case "cixiong_response":
+      return pending.targetSeatId;
+    case "fanjian_suit_response":
       return pending.targetSeatId;
     case "wugufengdeng_select":
       return pending.responderSeatId;
@@ -926,6 +1057,8 @@ const actionRequiredSeatId = (pending: PendingAction | null): number | null => {
       return pending.currentSeatId;
     case "jiedao_sha_response":
       return pending.weaponOwnerSeatId;
+    case "qihu_sha_response":
+      return pending.forcedSeatId;
     case "dying_response":
       return pending.responderSeatId;
     case "discard_cards":
@@ -938,6 +1071,9 @@ const actionRequiredSeatId = (pending: PendingAction | null): number | null => {
     case "qiaobian_phase":
     case "qiaobian_draw_targets":
     case "qiaobian_play_move":
+    case "shensu_response":
+    case "fangquan_play_response":
+    case "fangquan_end_response":
     case "xiaoji_response":
       return pending.seatId;
     case "liuli_response":
@@ -950,6 +1086,10 @@ const actionRequiredSeatId = (pending: PendingAction | null): number | null => {
       return pending.targetSeatId;
     case "beige_response":
       return pending.singerSeatId;
+    case "beige_club_discard_response":
+      return pending.sourceSeatId;
+    case "ganglie_cost_response":
+      return pending.sourceSeatId;
     case "leiji_response":
       return pending.actorSeatId;
     default:
@@ -969,6 +1109,8 @@ function App() {
   const [selectedDiscardIds, setSelectedDiscardIds] = useState<string[]>([]);
   const [selectedSkillName, setSelectedSkillName] = useState<string | null>(null);
   const [selectedSkillCardIds, setSelectedSkillCardIds] = useState<string[]>([]);
+  const [yijiAssignments, setYijiAssignments] = useState<Record<string, number | null>>({});
+  const [selectedWeaponAction, setSelectedWeaponAction] = useState<"zhangba" | null>(null);
   const [selectedQiaobianMoveCardId, setSelectedQiaobianMoveCardId] = useState<string | null>(null);
   const [setupDraft, setSetupDraft] = useState<SetupDraft | null>(null);
   const [generalPreview, setGeneralPreview] = useState<General | null>(null);
@@ -989,6 +1131,20 @@ function App() {
     saveStoredAiConfig(aiConfig);
   }, [aiConfig]);
 
+  useEffect(() => {
+    if (!game?.shaContinuation || game.pendingAction || game.winner) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      setGame((current) =>
+        current?.shaContinuation && !current.pendingAction && !current.winner
+          ? continuePendingShaTargets(current)
+          : current,
+      );
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, [game]);
+
   const generalPacks = useMemo(
     () => (data ? summarizeGeneralPacks(data.generals) : {}),
     [data],
@@ -1000,13 +1156,18 @@ function App() {
 
   const activeSeat = game ? game.seats[game.turn.activeSeatId] : null;
   const playerSeat = game?.seats.find((seat) => seat.controller === "human") ?? null;
-  const selectedCard = selectedCardId
-    ? playerSeat?.hand.find((card) => card.instance_id === selectedCardId) ?? null
-    : null;
+  const selectedCard = getPlayerOwnedCard(playerSeat, selectedCardId);
   const selectedInfo =
     game && playerSeat && selectedCard
       ? getCardPlayInfo(game, playerSeat.id, selectedCard)
       : null;
+  const zhangbaInfo =
+    game && playerSeat ? getZhangbaPlayInfo(game, playerSeat.id) : null;
+  const canUseSelectedWeaponAction =
+    Boolean(game && playerSeat && selectedWeaponAction === "zhangba") &&
+    Boolean(zhangbaInfo?.canPlay) &&
+    selectedSkillCardIds.length === 2 &&
+    selectedTargetIds.length === 1;
   const hasGrantedHuangtian =
     Boolean(game && playerSeat && playerSeat.general.faction === "群") &&
     Boolean(
@@ -1039,10 +1200,6 @@ function App() {
     }
 
     if (game && playerSeat && pending?.type === "tianxiang_response" && pending.targetSeatId === playerSeat.id) {
-      return new Set(pending.validTargetIds);
-    }
-
-    if (game && playerSeat && pending?.type === "yiji_response" && pending.targetSeatId === playerSeat.id) {
       return new Set(pending.validTargetIds);
     }
 
@@ -1085,15 +1242,71 @@ function App() {
       );
     }
 
+    if (
+      game &&
+      playerSeat &&
+      pending?.type === "shensu_response" &&
+      pending.seatId === playerSeat.id
+    ) {
+      return new Set(pending.validTargetIds);
+    }
+
+    if (
+      game &&
+      playerSeat &&
+      pending?.type === "fangquan_end_response" &&
+      pending.seatId === playerSeat.id
+    ) {
+      return new Set(pending.validTargetIds);
+    }
+
     if (game && playerSeat && selectedSkillName && canUseManualSkill) {
+      if (selectedSkillName === "武圣") {
+        const cardId = selectedSkillCardIds[0];
+        return new Set(cardId ? getWushengTargetIds(game, playerSeat.id, cardId) : []);
+      }
+      if (selectedSkillName === "奇袭") {
+        const cardId = selectedSkillCardIds[0];
+        return new Set(cardId ? getQixiTargetIds(game, playerSeat.id, cardId) : []);
+      }
+      if (selectedSkillName === "国色") {
+        const cardId = selectedSkillCardIds[0];
+        return new Set(cardId ? getGuoseTargetIds(game, playerSeat.id, cardId) : []);
+      }
+      if (selectedSkillName === "连环") {
+        const cardId = selectedSkillCardIds[0];
+        return new Set(cardId ? getLianhuanTargetIds(game, playerSeat.id, cardId) : []);
+      }
+      if (selectedSkillName === "双雄") {
+        const cardId = selectedSkillCardIds[0];
+        return new Set(cardId ? getShuangxiongTargetIds(game, playerSeat.id, cardId) : []);
+      }
+      if (selectedSkillName === "龙胆") {
+        const cardId = selectedSkillCardIds[0];
+        return new Set(cardId ? getLongdanTargetIds(game, playerSeat.id, cardId) : []);
+      }
       const otherAliveSeats = game.seats.filter(
         (seat) => seat.alive && seat.id !== playerSeat.id,
       );
       if (selectedSkillName === "仁德" || selectedSkillName === "反间") {
         return new Set(otherAliveSeats.map((seat) => seat.id));
       }
+      if (selectedSkillName === "青囊") {
+        return new Set(
+          game.seats
+            .filter((seat) => seat.alive && seat.hp < seat.maxHp)
+            .map((seat) => seat.id),
+        );
+      }
+      if (selectedSkillName === "强袭") {
+        return new Set(
+          otherAliveSeats
+            .filter((seat) => distanceBetweenSeats(game, playerSeat, seat) <= getAttackRange(playerSeat))
+            .map((seat) => seat.id),
+        );
+      }
       if (selectedSkillName === "离间") {
-        return new Set(otherAliveSeats.map((seat) => seat.id));
+        return new Set(otherAliveSeats.filter(isMaleSeat).map((seat) => seat.id));
       }
       if (selectedSkillName === "驱虎") {
         if (selectedTargetIds.length === 0) {
@@ -1129,6 +1342,13 @@ function App() {
       if (selectedSkillName === "放权") {
         return new Set(otherAliveSeats.map((seat) => seat.id));
       }
+      if (selectedSkillName === "结姻") {
+        return new Set(
+          otherAliveSeats
+            .filter((seat) => isMaleSeat(seat) && seat.hp < seat.maxHp)
+            .map((seat) => seat.id),
+        );
+      }
       if (selectedSkillName === "神速") {
         return new Set(
           playerSeat.equipment.some((card) => getEquipmentSlot(card))
@@ -1136,6 +1356,9 @@ function App() {
             : [],
         );
       }
+    }
+    if (game && playerSeat && selectedWeaponAction === "zhangba" && zhangbaInfo?.canPlay) {
+      return new Set(zhangbaInfo.validTargetIds);
     }
     if (!game || !selectedCard || !selectedInfo) {
       return new Set<number>();
@@ -1152,15 +1375,111 @@ function App() {
     selectedCard,
     selectedInfo,
     selectedQiaobianMoveCardId,
+    selectedSkillCardIds,
     selectedSkillName,
+    selectedWeaponAction,
     selectedTargetIds,
+    zhangbaInfo,
   ]);
   const selectedSkillReady = useMemo(() => {
     if (!canUseManualSkill || !selectedSkillName) {
       return false;
     }
+    if (selectedSkillName === "武圣") {
+      const cardId = selectedSkillCardIds[0];
+      if (!game || !playerSeat || !cardId) {
+        return false;
+      }
+      const validTargetIds = new Set(getWushengTargetIds(game, playerSeat.id, cardId));
+      const maxTargets = getWushengTargetLimit(game, playerSeat.id, cardId);
+      return (
+        selectedSkillCardIds.length === 1 &&
+        selectedTargetIds.length >= 1 &&
+        selectedTargetIds.length <= maxTargets &&
+        selectedTargetIds.every((seatId) => validTargetIds.has(seatId))
+      );
+    }
+    if (selectedSkillName === "奇袭") {
+      const cardId = selectedSkillCardIds[0];
+      return Boolean(
+        game &&
+          playerSeat &&
+          cardId &&
+          selectedSkillCardIds.length === 1 &&
+          selectedTargetIds.length === 1 &&
+          getQixiTargetIds(game, playerSeat.id, cardId).includes(selectedTargetIds[0]),
+      );
+    }
+    if (selectedSkillName === "国色") {
+      const cardId = selectedSkillCardIds[0];
+      return Boolean(
+        game &&
+          playerSeat &&
+          cardId &&
+          selectedSkillCardIds.length === 1 &&
+          selectedTargetIds.length === 1 &&
+          getGuoseTargetIds(game, playerSeat.id, cardId).includes(selectedTargetIds[0]),
+      );
+    }
+    if (selectedSkillName === "连环") {
+      const cardId = selectedSkillCardIds[0];
+      if (!game || !playerSeat || !cardId || selectedSkillCardIds.length !== 1) {
+        return false;
+      }
+      const validTargetIds = new Set(getLianhuanTargetIds(game, playerSeat.id, cardId));
+      return (
+        selectedTargetIds.length <= 2 &&
+        selectedTargetIds.every((seatId) => validTargetIds.has(seatId))
+      );
+    }
+    if (selectedSkillName === "双雄") {
+      const cardId = selectedSkillCardIds[0];
+      return Boolean(
+        game &&
+          playerSeat &&
+          cardId &&
+          selectedSkillCardIds.length === 1 &&
+          selectedTargetIds.length === 1 &&
+          getShuangxiongTargetIds(game, playerSeat.id, cardId).includes(selectedTargetIds[0]),
+      );
+    }
+    if (selectedSkillName === "龙胆") {
+      const cardId = selectedSkillCardIds[0];
+      if (!game || !playerSeat || !cardId) {
+        return false;
+      }
+      const validTargetIds = new Set(getLongdanTargetIds(game, playerSeat.id, cardId));
+      const maxTargets = getLongdanTargetLimit(game, playerSeat.id, cardId);
+      return (
+        selectedSkillCardIds.length === 1 &&
+        selectedTargetIds.length >= 1 &&
+        selectedTargetIds.length <= maxTargets &&
+        selectedTargetIds.every((seatId) => validTargetIds.has(seatId))
+      );
+    }
     if (selectedSkillName === "仁德") {
       return selectedSkillCardIds.length >= 1 && selectedTargetIds.length === 1;
+    }
+    if (selectedSkillName === "制衡") {
+      return selectedSkillCardIds.length >= 1;
+    }
+    if (selectedSkillName === "青囊") {
+      return selectedSkillCardIds.length === 1 && selectedTargetIds.length === 1;
+    }
+    if (selectedSkillName === "强袭") {
+      return selectedTargetIds.length === 1;
+    }
+    if (selectedSkillName === "乱击") {
+      if (selectedSkillCardIds.length !== 2 || !playerSeat) {
+        return false;
+      }
+      const [firstId, secondId] = selectedSkillCardIds;
+      const first = playerSeat.hand.find((card) => card.instance_id === firstId);
+      const second = playerSeat.hand.find((card) => card.instance_id === secondId);
+      return Boolean(first && second && first.suit === second.suit);
+    }
+    if (selectedSkillName === "结姻") {
+      return selectedSkillCardIds.length === 2 && selectedTargetIds.length === 1;
     }
     if (selectedSkillName === "离间") {
       return selectedSkillCardIds.length === 1 && selectedTargetIds.length === 2;
@@ -1178,18 +1497,69 @@ function App() {
       return selectedSkillCardIds.length === 1;
     }
     if (selectedSkillName === "神速") {
-      return selectedTargetIds.length === 1;
+      return selectedSkillCardIds.length === 1 && selectedTargetIds.length === 1;
     }
     return false;
-  }, [canUseManualSkill, selectedSkillCardIds.length, selectedSkillName, selectedTargetIds.length]);
+  }, [canUseManualSkill, game, playerSeat, selectedSkillCardIds, selectedSkillName, selectedTargetIds]);
   const selectedSkillHint = useMemo(() => {
     if (!selectedSkillName) {
       return "";
+    }
+    if (selectedSkillName === "武圣") {
+      return selectedTargetNames
+        ? `武圣：将1张红色手牌或装备牌当【杀】，目标 ${selectedTargetNames}`
+        : "武圣：先选择1张红色手牌或装备牌，再选择杀目标";
+    }
+    if (selectedSkillName === "奇袭") {
+      return selectedTargetNames
+        ? `奇袭：将1张黑色手牌或装备牌当【过河拆桥】，目标 ${selectedTargetNames}`
+        : "奇袭：先选择1张黑色手牌或装备牌，再选择有牌的其他角色";
+    }
+    if (selectedSkillName === "国色") {
+      return selectedTargetNames
+        ? `国色：将1张方片手牌当【乐不思蜀】，目标 ${selectedTargetNames}`
+        : "国色：先选择1张方片手牌，再选择乐不思蜀目标";
+    }
+    if (selectedSkillName === "连环") {
+      if (selectedTargetNames) {
+        return `连环：将1张梅花手牌当【铁索连环】，目标 ${selectedTargetNames}`;
+      }
+      return selectedSkillCardIds.length === 1
+        ? "连环：不选目标将重铸摸1张；也可选择1至2名目标"
+        : "连环：选择1张梅花手牌，再选择目标或直接确认重铸";
+    }
+    if (selectedSkillName === "双雄") {
+      return selectedTargetNames
+        ? `双雄：将1张异色手牌当【决斗】，目标 ${selectedTargetNames}`
+        : "双雄：先选择与判定牌颜色不同的手牌，再选择决斗目标";
+    }
+    if (selectedSkillName === "龙胆") {
+      return selectedTargetNames
+        ? `龙胆：将1张【闪】当【杀】，目标 ${selectedTargetNames}`
+        : "龙胆：先选择1张【闪】，再选择杀目标";
     }
     if (selectedSkillName === "仁德") {
       return selectedTargetNames
         ? `仁德：已选择 ${selectedSkillCardIds.length} 张手牌，交给 ${selectedTargetNames}`
         : `仁德：选择1张或多张手牌，再选择1名其他角色`;
+    }
+    if (selectedSkillName === "制衡") {
+      return `制衡：已选择 ${selectedSkillCardIds.length} 张手牌/装备牌，确认后弃置并摸等量牌`;
+    }
+    if (selectedSkillName === "青囊") {
+      return selectedTargetNames
+        ? `青囊：弃1张手牌，令 ${selectedTargetNames} 回复1点体力`
+        : "青囊：选择1张手牌和1名已受伤角色";
+    }
+    if (selectedSkillName === "强袭") {
+      return selectedTargetNames
+        ? `强袭：对 ${selectedTargetNames} 造成1点伤害`
+        : "强袭：选择1名攻击范围内的角色";
+    }
+    if (selectedSkillName === "乱击") {
+      return selectedSkillCardIds.length === 2
+        ? "乱击：已选择两张同花色手牌，确认后视为使用【万箭齐发】"
+        : "乱击：选择两张同花色手牌";
     }
     if (selectedSkillName === "反间") {
       return selectedTargetNames
@@ -1199,7 +1569,7 @@ function App() {
     if (selectedSkillName === "离间") {
       return selectedTargetNames
         ? `离间：弃1张手牌，令 ${selectedTargetNames} 决斗`
-        : "离间：选择1张手牌和2名其他角色";
+        : "离间：选择1张手牌和2名男性其他角色";
     }
     if (selectedSkillName === "驱虎") {
       if (selectedTargetIds.length === 0) {
@@ -1233,6 +1603,11 @@ function App() {
         ? `神速：弃置一张装备，视为对 ${selectedTargetNames} 使用无距离限制的【杀】`
         : "神速：选择1名目标，弃置装备并视为无距离【杀】";
     }
+    if (selectedSkillName === "结姻") {
+      return selectedTargetNames
+        ? `结姻：弃2张手牌，与 ${selectedTargetNames} 各回复1点体力`
+        : "结姻：选择2张手牌和1名已受伤的男性其他角色";
+    }
     return "";
   }, [selectedSkillCardIds.length, selectedSkillName, selectedTargetNames, selectedTargetIds.length]);
   const wuxieResponderSeatId =
@@ -1241,34 +1616,135 @@ function App() {
     pending?.type === "discard_cards" && pending.seatId === playerSeat?.id
       ? pending
       : null;
-  const shanCards = playerSeat?.hand.filter((card) => isCardUsableAsShan(playerSeat, card)) ?? [];
+  const longdanResponseMode =
+    playerSeat &&
+    hasSkillByName(playerSeat, "龙胆") &&
+    (
+      (pending?.type === "shan_response" && pending.targetSeatId === playerSeat.id) ||
+      (pending?.type === "basic_card_response" &&
+        pending.targetSeatId === playerSeat.id &&
+        pending.requiredCard === "shan")
+    )
+      ? "shan"
+      : playerSeat &&
+          hasSkillByName(playerSeat, "龙胆") &&
+          (
+            (pending?.type === "basic_card_response" &&
+              pending.targetSeatId === playerSeat.id &&
+              pending.requiredCard === "sha") ||
+            (pending?.type === "duel_sha_response" && pending.currentSeatId === playerSeat.id) ||
+            (pending?.type === "jiedao_sha_response" && pending.weaponOwnerSeatId === playerSeat.id) ||
+            (pending?.type === "qihu_sha_response" && pending.forcedSeatId === playerSeat.id)
+          )
+        ? "sha"
+        : null;
+  const isLongdanResponseSelected =
+    selectedSkillName === "龙胆" && Boolean(longdanResponseMode);
+  const shanCards = getShanResponseCardsForMode(
+    playerSeat,
+    isLongdanResponseSelected && longdanResponseMode === "shan",
+  );
   const guanshiDiscardCards =
     pending?.type === "guanshi_force_response" && pending.sourceSeatId === playerSeat?.id
       ? pending.discardableCards
       : [];
+  const xiangleBasicCards =
+    pending?.type === "xiangle_response" && pending.sourceSeatId === playerSeat?.id
+      ? (playerSeat?.hand.filter((card) => pending.basicCardIds.includes(card.instance_id)) ?? [])
+      : [];
+  const ganglieDiscardCards =
+    pending?.type === "ganglie_cost_response" && pending.sourceSeatId === playerSeat?.id
+      ? (playerSeat?.hand.filter((card) => pending.discardableCardIds.includes(card.instance_id)) ?? [])
+      : [];
+  const qiangxiWeaponOptions =
+    pending?.type === "qiangxi_cost_response" && pending.sourceSeatId === playerSeat?.id
+      ? pending.weaponOptions
+      : [];
   const qinglongShaCards =
     pending?.type === "qinglong_followup_response" && pending.sourceSeatId === playerSeat?.id && playerSeat
-      ? playerSeat.hand.filter((card) => pending.shaCardIds.includes(card.instance_id))
+      ? getPlayerShaResponseCards(playerSeat).filter((card) => pending.shaCardIds.includes(card.instance_id))
+      : [];
+  const cixiongCards =
+    pending?.type === "cixiong_response" && pending.targetSeatId === playerSeat?.id
+      ? (playerSeat?.hand.filter((card) => pending.handCardIds.includes(card.instance_id)) ?? [])
+      : [];
+  const hanbingOptions =
+    pending?.type === "hanbing_response" && pending.sourceSeatId === playerSeat?.id
+      ? pending.options
       : [];
   const guoheOptions =
     pending?.type === "guohe_select_response" && pending.sourceSeatId === playerSeat?.id
+      ? pending.options
+      : [];
+  const shunshouOptions =
+    pending?.type === "shunshou_select_response" && pending.sourceSeatId === playerSeat?.id
+      ? pending.options
+      : [];
+  const mengjinOptions =
+    pending?.type === "mengjin_response" && pending.sourceSeatId === playerSeat?.id
       ? pending.options
       : [];
   const qilingongMountOptions =
     pending?.type === "qilingong_response" && pending.sourceSeatId === playerSeat?.id
       ? pending.mountOptions
       : [];
+  const shensuEquipmentCards =
+    pending?.type === "shensu_response" &&
+    pending.mode === "skip_play" &&
+    pending.seatId === playerSeat?.id
+      ? (playerSeat?.equipment.filter((card) => pending.equipmentCardIds.includes(card.instance_id)) ?? [])
+      : [];
+  const fangquanDiscardCards =
+    pending?.type === "fangquan_end_response" && pending.seatId === playerSeat?.id
+      ? (playerSeat?.hand.filter((card) => pending.discardableCardIds.includes(card.instance_id)) ?? [])
+      : [];
   const basicResponseCards =
     pending?.type === "basic_card_response" && playerSeat
-      ? playerSeat.hand.filter((card) =>
-          pending.requiredCard === "shan"
-            ? isCardUsableAsShan(playerSeat, card)
-            : isCardUsableAsSha(playerSeat, card),
-        )
+      ? pending.requiredCard === "shan"
+        ? getShanResponseCardsForMode(
+            playerSeat,
+            isLongdanResponseSelected && longdanResponseMode === "shan",
+          )
+        : getShaResponseCardsForMode(
+            playerSeat,
+            isLongdanResponseSelected && longdanResponseMode === "sha",
+          )
       : [];
+  const canUseZhangbaForBasicResponse =
+    pending?.type === "basic_card_response" &&
+    pending.requiredCard === "sha" &&
+    Boolean(playerSeat && canUseZhangbaSha(playerSeat));
   const duelShaCards =
     pending?.type === "duel_sha_response" && playerSeat
-      ? playerSeat.hand.filter((card) => isCardUsableAsSha(playerSeat, card))
+      ? getShaResponseCardsForMode(
+          playerSeat,
+          isLongdanResponseSelected && longdanResponseMode === "sha",
+        )
+      : [];
+  const canUseZhangbaForDuel =
+    pending?.type === "duel_sha_response" &&
+    Boolean(playerSeat && canUseZhangbaSha(playerSeat));
+  const canUseZhangbaForJiedao =
+    pending?.type === "jiedao_sha_response" &&
+    pending.weaponOwnerSeatId === playerSeat?.id &&
+    Boolean(playerSeat && canUseZhangbaSha(playerSeat));
+  const jiedaoShaCards =
+    pending?.type === "jiedao_sha_response" && pending.weaponOwnerSeatId === playerSeat?.id
+      ? getShaResponseCardsForMode(
+          playerSeat,
+          isLongdanResponseSelected && longdanResponseMode === "sha",
+        )
+      : [];
+  const canUseZhangbaForQihu =
+    pending?.type === "qihu_sha_response" &&
+    pending.forcedSeatId === playerSeat?.id &&
+    Boolean(playerSeat && canUseZhangbaSha(playerSeat));
+  const qihuShaCards =
+    pending?.type === "qihu_sha_response" && pending.forcedSeatId === playerSeat?.id
+      ? getShaResponseCardsForMode(
+          playerSeat,
+          isLongdanResponseSelected && longdanResponseMode === "sha",
+        )
       : [];
   const huogongDiscardCards =
     pending?.type === "huogong_discard" && playerSeat
@@ -1279,7 +1755,7 @@ function App() {
   const wuxieCards = playerSeat?.hand.filter(isWuxie) ?? [];
   const liuliCards =
     pending?.type === "liuli_response" && pending.targetSeatId === playerSeat?.id
-      ? (playerSeat?.hand ?? [])
+      ? ([...(playerSeat?.hand ?? []), ...(playerSeat?.equipment ?? [])])
       : [];
   const tianxiangCards =
     pending?.type === "tianxiang_response" && pending.targetSeatId === playerSeat?.id
@@ -1287,7 +1763,13 @@ function App() {
       : [];
   const beigeCards =
     pending?.type === "beige_response" && pending.singerSeatId === playerSeat?.id
-      ? (playerSeat?.hand ?? [])
+      ? ([...(playerSeat?.hand ?? []), ...(playerSeat?.equipment ?? [])])
+      : [];
+  const beigeClubDiscardCards =
+    pending?.type === "beige_club_discard_response" && pending.sourceSeatId === playerSeat?.id
+      ? ([...(playerSeat?.hand ?? []), ...(playerSeat?.equipment ?? [])].filter((card) =>
+          pending.discardableCardIds.includes(card.instance_id),
+        ))
       : [];
   const pendingTriggerSkill =
     pending?.type === "liuli_response" && pending.targetSeatId === playerSeat?.id
@@ -1307,11 +1789,15 @@ function App() {
   const wuguCards = pending?.type === "wugufengdeng_select" ? pending.revealedCards : [];
   const judgeReplaceCards =
     pending?.type === "judge_replace_response" && pending.replacerSeatId === playerSeat?.id
-      ? (playerSeat?.hand.filter((card) => pending.replaceableCardIds.includes(card.instance_id)) ?? [])
+      ? ([...(playerSeat?.hand ?? []), ...(playerSeat?.equipment ?? [])].filter((card) =>
+          pending.replaceableCardIds.includes(card.instance_id),
+        ))
       : [];
   const skillJudgeReplaceCards =
     pending?.type === "skill_judge_replace_response" && pending.replacerSeatId === playerSeat?.id
-      ? (playerSeat?.hand.filter((card) => pending.replaceableCardIds.includes(card.instance_id)) ?? [])
+      ? ([...(playerSeat?.hand ?? []), ...(playerSeat?.equipment ?? [])].filter((card) =>
+          pending.replaceableCardIds.includes(card.instance_id),
+        ))
       : [];
   const guanxingCards = pending?.type === "guanxing_response" ? pending.viewedCards : [];
   const dyingCards = game ? getDyingCards(game) : [];
@@ -1337,6 +1823,7 @@ function App() {
     setSelectedDiscardIds([]);
     setSelectedSkillName(null);
     setSelectedSkillCardIds([]);
+    setSelectedWeaponAction(null);
     setSelectedQiaobianMoveCardId(null);
     setGame((current) => {
       if (!current || current.pendingAction || current.winner) {
@@ -1368,6 +1855,7 @@ function App() {
     setSelectedDiscardIds([]);
     setSelectedSkillName(null);
     setSelectedSkillCardIds([]);
+    setSelectedWeaponAction(null);
     setSelectedQiaobianMoveCardId(null);
     setGame(null);
     if (data) {
@@ -1384,6 +1872,7 @@ function App() {
     setSelectedDiscardIds([]);
     setSelectedSkillName(null);
     setSelectedSkillCardIds([]);
+    setSelectedWeaponAction(null);
     setSelectedQiaobianMoveCardId(null);
     setSetupDraft(createSetupDraft(data));
   }, [data]);
@@ -1408,6 +1897,7 @@ function App() {
     setSelectedDiscardIds([]);
     setSelectedSkillName(null);
     setSelectedSkillCardIds([]);
+    setSelectedWeaponAction(null);
     setSelectedQiaobianMoveCardId(null);
     setGame(
       createInitialGame(data, setupDraft.seed, {
@@ -1427,7 +1917,12 @@ function App() {
       if (!game || !playerSeat) {
         return;
       }
+      const cardInHand = playerSeat.hand.some((item) => item.instance_id === card.instance_id);
+      const cardInEquipment = playerSeat.equipment.some((item) => item.instance_id === card.instance_id);
       if (discardPending) {
+        if (!cardInHand) {
+          return;
+        }
         setSelectedDiscardIds((current) =>
           current.includes(card.instance_id)
             ? current.filter((id) => id !== card.instance_id)
@@ -1435,7 +1930,45 @@ function App() {
         );
         return;
       }
+      if (selectedWeaponAction === "zhangba") {
+        if (!cardInHand) {
+          return;
+        }
+        setSelectedCardId(null);
+        setSelectedSkillName(null);
+        setSelectedSkillCardIds((current) => {
+          if (current.includes(card.instance_id)) {
+            return current.filter((id) => id !== card.instance_id);
+          }
+          if (current.length >= 2) {
+            return [current[1], card.instance_id];
+          }
+          return [...current, card.instance_id];
+        });
+        return;
+      }
+      if (
+        pending?.type === "beige_club_discard_response" &&
+        pending.sourceSeatId === playerSeat.id &&
+        pending.discardableCardIds.includes(card.instance_id)
+      ) {
+        setSelectedCardId(null);
+        setSelectedSkillName(null);
+        setSelectedSkillCardIds((current) => {
+          if (current.includes(card.instance_id)) {
+            return current.filter((id) => id !== card.instance_id);
+          }
+          if (current.length >= pending.requiredCount) {
+            return [...current.slice(1), card.instance_id];
+          }
+          return [...current, card.instance_id];
+        });
+        return;
+      }
       if (pendingTriggerSkill) {
+        if (cardInEquipment && pendingTriggerSkill !== "流离") {
+          return;
+        }
         if (!isPendingTriggerCardSelectable(card)) {
           return;
         }
@@ -1446,8 +1979,28 @@ function App() {
         );
         return;
       }
+      if (
+        pending?.type === "fangquan_end_response" &&
+        pending.seatId === playerSeat.id &&
+        pending.discardableCardIds.includes(card.instance_id)
+      ) {
+        setSelectedCardId(null);
+        setSelectedSkillName(null);
+        setSelectedSkillCardIds((current) =>
+          current[0] === card.instance_id ? [] : [card.instance_id],
+        );
+        return;
+      }
       if (selectedSkillName) {
-        if (!isManualSkillCardSelectable(selectedSkillName, card)) {
+        const canSelectEquipment =
+          selectedSkillName === "制衡" ||
+          selectedSkillName === "武圣" ||
+          selectedSkillName === "奇袭" ||
+          selectedSkillName === "神速";
+        if (cardInEquipment && !canSelectEquipment) {
+          return;
+        }
+        if (!isManualSkillCardSelectable(selectedSkillName, card, playerSeat, game)) {
           return;
         }
         const limit = manualSkillCardLimit(selectedSkillName);
@@ -1470,15 +2023,17 @@ function App() {
 
       if (info.mode === "target") {
         setSelectedTargetIds([]);
+        setSelectedWeaponAction(null);
         setSelectedCardId(selectedCardId === card.instance_id ? null : card.instance_id);
         return;
       }
 
       setSelectedCardId(null);
       setSelectedTargetIds([]);
+      setSelectedWeaponAction(null);
       setGame(playCardFromHand(game, playerSeat.id, card.instance_id));
     },
-    [discardPending, game, pendingTriggerSkill, playerSeat, selectedCardId, selectedSkillName],
+    [discardPending, game, pending, pendingTriggerSkill, playerSeat, selectedCardId, selectedSkillName, selectedWeaponAction],
   );
 
   const handleTarget = useCallback(
@@ -1498,10 +2053,7 @@ function App() {
         );
         return;
       }
-      if (
-        (pending?.type === "yiji_response" || pending?.type === "jieming_response") &&
-        pending.targetSeatId === playerSeat.id
-      ) {
+      if (pending?.type === "jieming_response" && pending.targetSeatId === playerSeat.id) {
         if (!targetableSeatIds.has(targetSeatId)) {
           return;
         }
@@ -1561,13 +2113,89 @@ function App() {
         setSelectedTargetIds([selectedTargetIds[0], targetSeatId]);
         return;
       }
+      if (
+        (pending?.type === "shensu_response" || pending?.type === "fangquan_end_response") &&
+        pending.seatId === playerSeat.id
+      ) {
+        if (!targetableSeatIds.has(targetSeatId)) {
+          return;
+        }
+        setSelectedTargetIds((current) =>
+          current[0] === targetSeatId ? [] : [targetSeatId],
+        );
+        return;
+      }
       if (selectedSkillName) {
         if (!targetableSeatIds.has(targetSeatId)) {
           return;
         }
+        if (selectedSkillName === "武圣") {
+          const cardId = selectedSkillCardIds[0];
+          const maxTargets =
+            game && playerSeat && cardId
+              ? getWushengTargetLimit(game, playerSeat.id, cardId)
+              : 1;
+          setSelectedTargetIds((current) => {
+            if (current.includes(targetSeatId)) {
+              return current.filter((seatId) => seatId !== targetSeatId);
+            }
+            if (current.length >= maxTargets) {
+              return [...current.slice(1), targetSeatId];
+            }
+            return [...current, targetSeatId];
+          });
+          return;
+        }
+        if (selectedSkillName === "奇袭") {
+          setSelectedTargetIds((current) =>
+            current[0] === targetSeatId ? [] : [targetSeatId],
+          );
+          return;
+        }
+        if (selectedSkillName === "连环") {
+          setSelectedTargetIds((current) => {
+            if (current.includes(targetSeatId)) {
+              return current.filter((seatId) => seatId !== targetSeatId);
+            }
+            if (current.length >= 2) {
+              return [current[1], targetSeatId];
+            }
+            return [...current, targetSeatId];
+          });
+          return;
+        }
+        if (selectedSkillName === "龙胆") {
+          const cardId = selectedSkillCardIds[0];
+          const maxTargets =
+            game && playerSeat && cardId
+              ? getLongdanTargetLimit(game, playerSeat.id, cardId)
+              : 1;
+          setSelectedTargetIds((current) => {
+            if (current.includes(targetSeatId)) {
+              return current.filter((seatId) => seatId !== targetSeatId);
+            }
+            if (current.length >= maxTargets) {
+              return [...current.slice(1), targetSeatId];
+            }
+            return [...current, targetSeatId];
+          });
+          return;
+        }
+        if (
+          selectedSkillName === "国色" ||
+          selectedSkillName === "双雄"
+        ) {
+          setSelectedTargetIds((current) =>
+            current[0] === targetSeatId ? [] : [targetSeatId],
+          );
+          return;
+        }
         if (
           selectedSkillName === "仁德" ||
-          selectedSkillName === "反间"
+          selectedSkillName === "反间" ||
+          selectedSkillName === "青囊" ||
+          selectedSkillName === "强袭" ||
+          selectedSkillName === "结姻"
         ) {
           setSelectedTargetIds((current) =>
             current[0] === targetSeatId ? [] : [targetSeatId],
@@ -1616,6 +2244,15 @@ function App() {
           return;
         }
       }
+      if (selectedWeaponAction === "zhangba") {
+        if (!zhangbaInfo?.validTargetIds.includes(targetSeatId)) {
+          return;
+        }
+        setSelectedTargetIds((current) =>
+          current[0] === targetSeatId ? [] : [targetSeatId],
+        );
+        return;
+      }
       if (!selectedCard) {
         return;
       }
@@ -1661,6 +2298,23 @@ function App() {
         return;
       }
 
+      if ((selectedInfo?.maxTargets ?? 1) > 1) {
+        if (!selectedInfo?.validTargetIds.includes(targetSeatId)) {
+          return;
+        }
+        setSelectedTargetIds((current) => {
+          if (current.includes(targetSeatId)) {
+            return current.filter((seatId) => seatId !== targetSeatId);
+          }
+          const maxTargets = selectedInfo.maxTargets ?? 1;
+          if (current.length >= maxTargets) {
+            return [...current.slice(1), targetSeatId];
+          }
+          return [...current, targetSeatId];
+        });
+        return;
+      }
+
       setSelectedCardId(null);
       setSelectedTargetIds([]);
       setGame(
@@ -1674,9 +2328,12 @@ function App() {
       selectedCard,
       selectedInfo,
       selectedQiaobianMoveCardId,
+      selectedSkillCardIds,
       selectedSkillName,
+      selectedWeaponAction,
       selectedTargetIds,
       targetableSeatIds,
+      zhangbaInfo,
     ],
   );
 
@@ -1703,6 +2360,60 @@ function App() {
     );
   }, [game, playerSeat, selectedCard, selectedInfo, selectedTargetIds]);
 
+  const handleConfirmMultiSha = useCallback(() => {
+    if (
+      !game ||
+      !playerSeat ||
+      !selectedCard ||
+      !selectedInfo ||
+      (selectedInfo.maxTargets ?? 1) <= 1 ||
+      selectedTargetIds.length < (selectedInfo.minTargets ?? 1)
+    ) {
+      return;
+    }
+    setSelectedCardId(null);
+    setSelectedTargetIds([]);
+    setGame(
+      playCardFromHand(
+        game,
+        playerSeat.id,
+        selectedCard.instance_id,
+        selectedTargetIds[0],
+        selectedTargetIds.slice(1),
+      ),
+    );
+  }, [game, playerSeat, selectedCard, selectedInfo, selectedTargetIds]);
+
+  const handleConfirmZhangba = useCallback(() => {
+    if (
+      !game ||
+      !playerSeat ||
+      selectedWeaponAction !== "zhangba" ||
+      !canUseSelectedWeaponAction
+    ) {
+      return;
+    }
+    const [targetSeatId] = selectedTargetIds;
+    setSelectedWeaponAction(null);
+    setSelectedSkillCardIds([]);
+    setSelectedTargetIds([]);
+    setGame(
+      playZhangbaShaFromHand(
+        game,
+        playerSeat.id,
+        selectedSkillCardIds,
+        targetSeatId,
+      ),
+    );
+  }, [
+    canUseSelectedWeaponAction,
+    game,
+    playerSeat,
+    selectedSkillCardIds,
+    selectedTargetIds,
+    selectedWeaponAction,
+  ]);
+
   const handleRecastTiesuo = useCallback(() => {
     if (!game || !playerSeat || !selectedCard || !selectedInfo?.canRecast) {
       return;
@@ -1715,6 +2426,8 @@ function App() {
   const handleShaResponse = useCallback((useShan: boolean, cardInstanceId?: string | null) => {
     setSelectedCardId(null);
     setSelectedTargetIds([]);
+    setSelectedSkillName(null);
+    setSelectedSkillCardIds([]);
     setGame((current) => (current ? respondToSha(current, useShan, cardInstanceId) : current));
   }, []);
 
@@ -1744,6 +2457,14 @@ function App() {
     setGame((current) => (current ? respondToBeige(current, cardId) : current));
   }, [selectedSkillCardIds]);
 
+  const handleBeigeClubDiscard = useCallback(() => {
+    const cardIds = [...selectedSkillCardIds];
+    setSelectedCardId(null);
+    setSelectedTargetIds([]);
+    setSelectedSkillCardIds([]);
+    setGame((current) => (current ? respondToBeigeClubDiscard(current, cardIds) : current));
+  }, [selectedSkillCardIds]);
+
   const handleFankuiResponse = useCallback((optionKey: string | null) => {
     setSelectedCardId(null);
     setSelectedTargetIds([]);
@@ -1751,13 +2472,49 @@ function App() {
     setGame((current) => (current ? respondToFankui(current, optionKey) : current));
   }, []);
 
-  const handleYijiResponse = useCallback((useSkill: boolean) => {
-    const targetId = useSkill ? selectedTargetIds[0] ?? null : null;
+  const handleFanjianSuitResponse = useCallback((declaredSuit: DeclaredSuit) => {
     setSelectedCardId(null);
     setSelectedTargetIds([]);
     setSelectedSkillCardIds([]);
-    setGame((current) => (current ? respondToYiji(current, targetId) : current));
-  }, [selectedTargetIds]);
+    setGame((current) => (current ? respondToFanjianSuit(current, declaredSuit) : current));
+  }, []);
+
+  const handleYijiResponse = useCallback((useSkill: boolean) => {
+    setSelectedCardId(null);
+    setSelectedTargetIds([]);
+    setSelectedSkillCardIds([]);
+    setYijiAssignments({});
+    setGame((current) => (current ? respondToYiji(current, useSkill ? [] : null) : current));
+  }, []);
+
+  const handleYijiRecipientChange = useCallback((cardInstanceId: string, recipientSeatId: number | null) => {
+    setYijiAssignments((current) => ({
+      ...current,
+      [cardInstanceId]: recipientSeatId,
+    }));
+  }, []);
+
+  const handleConfirmYijiDistribution = useCallback(() => {
+    if (pending?.type !== "yiji_response" || !pending.revealedCards) {
+      return;
+    }
+    const assignments = pending.revealedCards
+      .map<YijiAssignment | null>((card) => {
+        const recipientSeatId = yijiAssignments[card.instance_id];
+        return recipientSeatId === null || recipientSeatId === undefined
+          ? null
+          : {
+              cardInstanceId: card.instance_id,
+              recipientSeatId,
+            };
+      })
+      .filter((assignment): assignment is YijiAssignment => assignment !== null);
+    setSelectedCardId(null);
+    setSelectedTargetIds([]);
+    setSelectedSkillCardIds([]);
+    setYijiAssignments({});
+    setGame((current) => (current ? respondToYiji(current, assignments) : current));
+  }, [pending, yijiAssignments]);
 
   const handleJiemingResponse = useCallback((useSkill: boolean) => {
     const targetId = useSkill ? selectedTargetIds[0] ?? null : null;
@@ -1779,6 +2536,13 @@ function App() {
     setSelectedTargetIds([]);
     setSelectedSkillCardIds([]);
     setGame((current) => (current ? respondToGanglie(current, useSkill) : current));
+  }, []);
+
+  const handleGanglieCostResponse = useCallback((discardCardIds: string[] | null) => {
+    setSelectedCardId(null);
+    setSelectedTargetIds([]);
+    setSelectedSkillCardIds([]);
+    setGame((current) => (current ? respondToGanglieCost(current, discardCardIds) : current));
   }, []);
 
   const handleXiaojiResponse = useCallback((useSkill: boolean) => {
@@ -1810,6 +2574,38 @@ function App() {
     setSelectedSkillCardIds([]);
     setGame((current) => (current ? respondToTuxi(current, targetIds) : current));
   }, [selectedTargetIds]);
+
+  const handleShensuResponse = useCallback((useSkill: boolean) => {
+    const targetId = useSkill ? selectedTargetIds[0] ?? null : null;
+    const equipmentCardId =
+      useSkill && pending?.type === "shensu_response" && pending.mode === "skip_play"
+        ? selectedSkillCardIds[0] ?? null
+        : null;
+    setSelectedCardId(null);
+    setSelectedTargetIds([]);
+    setSelectedSkillCardIds([]);
+    setGame((current) =>
+      current ? respondToShensu(current, targetId, equipmentCardId) : current,
+    );
+  }, [pending, selectedSkillCardIds, selectedTargetIds]);
+
+  const handleFangquanPlayResponse = useCallback((useSkill: boolean) => {
+    setSelectedCardId(null);
+    setSelectedTargetIds([]);
+    setSelectedSkillCardIds([]);
+    setGame((current) => (current ? respondToFangquanPlay(current, useSkill) : current));
+  }, []);
+
+  const handleFangquanEndResponse = useCallback((useSkill: boolean) => {
+    const targetId = useSkill ? selectedTargetIds[0] ?? null : null;
+    const cardInstanceId = useSkill ? selectedSkillCardIds[0] ?? null : null;
+    setSelectedCardId(null);
+    setSelectedTargetIds([]);
+    setSelectedSkillCardIds([]);
+    setGame((current) =>
+      current ? respondToFangquanEnd(current, targetId, cardInstanceId) : current,
+    );
+  }, [selectedSkillCardIds, selectedTargetIds]);
 
   const handleKejiResponse = useCallback((useSkill: boolean) => {
     setSelectedCardId(null);
@@ -1853,9 +2649,11 @@ function App() {
     setGame((current) => (current ? respondToLuoshen(current, useSkill) : current));
   }, []);
 
-  const handleBasicResponse = useCallback((action: "card" | "wuxie" | "pass", cardInstanceId?: string | null) => {
+  const handleBasicResponse = useCallback((action: "card" | "wuxie" | "pass", cardInstanceId?: string | string[] | null) => {
     setSelectedCardId(null);
     setSelectedTargetIds([]);
+    setSelectedSkillName(null);
+    setSelectedSkillCardIds([]);
     setGame((current) => (current ? respondToBasicCard(current, action, cardInstanceId) : current));
   }, []);
 
@@ -1865,10 +2663,20 @@ function App() {
     setGame((current) => (current ? respondToWuxie(current, useWuxie, cardInstanceId) : current));
   }, []);
 
-  const handleDuelShaResponse = useCallback((useShaCard: boolean, cardInstanceId?: string | null) => {
+  const handleDuelShaResponse = useCallback((useShaCard: boolean, cardInstanceId?: string | string[] | null) => {
     setSelectedCardId(null);
     setSelectedTargetIds([]);
+    setSelectedSkillName(null);
+    setSelectedSkillCardIds([]);
     setGame((current) => (current ? respondToDuelSha(current, useShaCard, cardInstanceId) : current));
+  }, []);
+
+  const handleXiangleResponse = useCallback((cardInstanceId: string | null) => {
+    setSelectedCardId(null);
+    setSelectedTargetIds([]);
+    setSelectedSkillName(null);
+    setSelectedSkillCardIds([]);
+    setGame((current) => (current ? respondToXiangle(current, cardInstanceId) : current));
   }, []);
 
   const handleGuanshiResponse = useCallback((useSkill: boolean) => {
@@ -1885,16 +2693,24 @@ function App() {
     setGame((current) => (current ? respondToQinglongFollowup(current, cardInstanceId) : current));
   }, []);
 
-  const handleCixiongResponse = useCallback((discardHand: boolean) => {
-    setSelectedCardId(null);
-    setSelectedTargetIds([]);
-    setGame((current) => (current ? respondToCixiongSword(current, discardHand) : current));
+  const handleQiangxiCost = useCallback((weaponOptionKey: string | null) => {
+    setGame((current) =>
+      current ? respondToQiangxiCost(current, weaponOptionKey) : current,
+    );
   }, []);
 
-  const handleHanbingResponse = useCallback((useSkill: boolean) => {
+  const handleCixiongResponse = useCallback((cardInstanceId: string | null) => {
     setSelectedCardId(null);
     setSelectedTargetIds([]);
-    setGame((current) => (current ? respondToHanbingSword(current, useSkill) : current));
+    setSelectedSkillCardIds([]);
+    setGame((current) => (current ? respondToCixiongSword(current, cardInstanceId) : current));
+  }, []);
+
+  const handleHanbingResponse = useCallback((optionKeys: string[] | null) => {
+    setSelectedCardId(null);
+    setSelectedTargetIds([]);
+    setSelectedSkillCardIds([]);
+    setGame((current) => (current ? respondToHanbingSword(current, optionKeys) : current));
   }, []);
 
   const handleQilingongResponse = useCallback((optionKey: string | null) => {
@@ -1911,16 +2727,38 @@ function App() {
     );
   }, []);
 
-  const handleJiedaoResponse = useCallback((useShaCard: boolean, cardInstanceId?: string | null) => {
+  const handleJiedaoResponse = useCallback((useShaCard: boolean, cardInstanceId?: string | string[] | null) => {
     setSelectedCardId(null);
     setSelectedTargetIds([]);
+    setSelectedSkillName(null);
+    setSelectedSkillCardIds([]);
     setGame((current) => (current ? respondToJiedaoSha(current, useShaCard, cardInstanceId) : current));
+  }, []);
+
+  const handleQihuResponse = useCallback((useShaCard: boolean, cardInstanceId?: string | string[] | null) => {
+    setSelectedCardId(null);
+    setSelectedTargetIds([]);
+    setSelectedSkillName(null);
+    setSelectedSkillCardIds([]);
+    setGame((current) => (current ? respondToQihuSha(current, useShaCard, cardInstanceId) : current));
   }, []);
 
   const handleGuoheSelect = useCallback((optionKey: string) => {
     setSelectedCardId(null);
     setSelectedTargetIds([]);
     setGame((current) => (current ? respondToGuoheSelect(current, optionKey) : current));
+  }, []);
+
+  const handleShunshouSelect = useCallback((optionKey: string) => {
+    setSelectedCardId(null);
+    setSelectedTargetIds([]);
+    setGame((current) => (current ? respondToShunshouSelect(current, optionKey) : current));
+  }, []);
+
+  const handleMengjinResponse = useCallback((optionKey: string | null) => {
+    setSelectedCardId(null);
+    setSelectedTargetIds([]);
+    setGame((current) => (current ? respondToMengjin(current, optionKey) : current));
   }, []);
 
   const handleWuguSelect = useCallback((cardInstanceId: string) => {
@@ -1968,10 +2806,21 @@ function App() {
   }, []);
 
   const handleSkillClick = useCallback((skillName: string) => {
+    if (skillName === "龙胆" && longdanResponseMode) {
+      setSelectedCardId(null);
+      setSelectedTargetIds([]);
+      setSelectedSkillCardIds([]);
+      setSelectedWeaponAction(null);
+      setSelectedQiaobianMoveCardId(null);
+      setSelectedSkillName((current) => (current === skillName ? null : skillName));
+      return;
+    }
+
     if (manualSkillNames.has(skillName)) {
       setSelectedCardId(null);
       setSelectedTargetIds([]);
       setSelectedSkillCardIds([]);
+      setSelectedWeaponAction(null);
       setSelectedQiaobianMoveCardId(null);
       if (
         !game ||
@@ -2023,7 +2872,7 @@ function App() {
           }
         : current,
     );
-  }, [game, playerSeat]);
+  }, [game, longdanResponseMode, playerSeat]);
 
   const handleConfirmSkill = useCallback(() => {
     if (!game || !playerSeat || !selectedSkillName || !selectedSkillReady) {
@@ -2036,6 +2885,7 @@ function App() {
     setSelectedTargetIds([]);
     setSelectedSkillName(null);
     setSelectedSkillCardIds([]);
+    setSelectedWeaponAction(null);
     setSelectedQiaobianMoveCardId(null);
     setGame(activateSkillWithSelection(game, playerSeat.id, skillName, targetIds, cardIds));
   }, [
@@ -2052,6 +2902,7 @@ function App() {
     setSelectedTargetIds([]);
     setSelectedSkillName(null);
     setSelectedSkillCardIds([]);
+    setSelectedWeaponAction(null);
     setSelectedQiaobianMoveCardId(null);
     setGame((current) => {
       if (!current) {
@@ -2148,7 +2999,7 @@ function App() {
   );
 
   useEffect(() => {
-    if (!selectedCardId || !playerSeat?.hand.some((card) => card.instance_id === selectedCardId)) {
+    if (!selectedCardId || !getPlayerOwnedCard(playerSeat, selectedCardId)) {
       setSelectedCardId(null);
       setSelectedTargetIds([]);
     }
@@ -2163,10 +3014,13 @@ function App() {
       playerSeat &&
       (playerSeat.general.skills.some((skill) => skill.name === selectedSkillName) ||
         (selectedSkillName === "黄天" && hasGrantedHuangtian)) &&
-      game.turn.activeSeatId === playerSeat.id &&
-      game.turn.phase === "出牌" &&
-      !game.pendingAction &&
-      !game.winner;
+      !game.winner &&
+      (
+        (game.turn.activeSeatId === playerSeat.id &&
+          game.turn.phase === "出牌" &&
+          !game.pendingAction) ||
+        (selectedSkillName === "龙胆" && Boolean(longdanResponseMode))
+      );
     if (!canKeepSkillSelection) {
       setSelectedSkillName(null);
       setSelectedSkillCardIds([]);
@@ -2175,9 +3029,62 @@ function App() {
       return;
     }
     setSelectedSkillCardIds((current) =>
-      current.filter((id) => playerSeat.hand.some((card) => card.instance_id === id)),
+      current.filter((id) =>
+        selectedSkillName === "制衡" ||
+        selectedSkillName === "武圣" ||
+        selectedSkillName === "奇袭"
+          ? Boolean(getPlayerOwnedCard(playerSeat, id))
+          : playerSeat.hand.some((card) => card.instance_id === id),
+      ),
     );
-  }, [game, hasGrantedHuangtian, playerSeat, selectedSkillName]);
+  }, [game, hasGrantedHuangtian, longdanResponseMode, playerSeat, selectedSkillName]);
+
+  useEffect(() => {
+    if (
+      !game ||
+      !activeSeat ||
+      activeSeat.controller !== "human" ||
+      game.pendingAction ||
+      game.winner ||
+      game.turn.activeSeatId !== activeSeat.id ||
+      game.turn.phase !== "出牌" ||
+      game.turn.skipPlay
+    ) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setSelectedCardId(null);
+      setSelectedTargetIds([]);
+      setSelectedSkillName(null);
+      setSelectedSkillCardIds([]);
+      setSelectedQiaobianMoveCardId(null);
+      setGame((current) => {
+        if (
+          !current ||
+          current.pendingAction ||
+          current.winner ||
+          current.turn.phase !== "出牌" ||
+          current.turn.skipPlay
+        ) {
+          return current;
+        }
+        const beforeUsedSkills = current.turn.usedSkills.join("|");
+        const beforeLogHead = current.log[0];
+        const next = offerHumanPlayPhaseOpeningPrompt(current);
+        if (
+          next.pendingAction ||
+          next.turn.usedSkills.join("|") !== beforeUsedSkills ||
+          next.log[0] !== beforeLogHead
+        ) {
+          return next;
+        }
+        return current;
+      });
+    }, 120);
+
+    return () => window.clearTimeout(timer);
+  }, [activeSeat, game]);
 
   useEffect(() => {
     if (
@@ -2201,7 +3108,9 @@ function App() {
       setSelectedSkillCardIds([]);
       setSelectedQiaobianMoveCardId(null);
       setGame((current) =>
-        current && playerSeat ? offerQiaobianPhase(current, playerSeat.id, "出牌") : current,
+        current && playerSeat && !current.pendingAction
+          ? offerQiaobianPhase(current, playerSeat.id, "出牌")
+          : current,
       );
     }, 160);
 
@@ -2219,14 +3128,35 @@ function App() {
   }, [discardPending, playerSeat]);
 
   useEffect(() => {
+    if (pending?.type !== "yiji_response" || !pending.revealedCards) {
+      setYijiAssignments({});
+      return;
+    }
+
+    setYijiAssignments((current) => {
+      const next: Record<string, number | null> = {};
+      pending.revealedCards?.forEach((card) => {
+        next[card.instance_id] = current[card.instance_id] ?? null;
+      });
+      return next;
+    });
+  }, [pending]);
+
+  useEffect(() => {
+    const shouldAutoAdvanceHumanPhase =
+      game
+        ? autoHumanPhases.has(game.turn.phase) ||
+          (game.turn.phase === "出牌" && game.turn.skipPlay) ||
+          game.turn.phase === "弃牌" ||
+          game.turn.phase === "结束"
+        : false;
     if (
       !game ||
       !activeSeat ||
       activeSeat.controller !== "human" ||
       game.pendingAction ||
       game.winner ||
-      (!autoHumanPhases.has(game.turn.phase) &&
-        !(game.turn.phase === "出牌" && game.turn.skipPlay))
+      !shouldAutoAdvanceHumanPhase
     ) {
       return;
     }
@@ -2469,7 +3399,7 @@ function App() {
       <section className="table-header">
         <div>
           <p className="eyebrow">浏览器版单机身份局</p>
-          <h1>肥喵多尼的AI三国杀 <span>v1.1</span></h1>
+          <h1>肥喵多尼的AI三国杀 <span>v2.0</span></h1>
         </div>
         <div className="header-actions">
           <button
@@ -2657,6 +3587,109 @@ function App() {
         </section>
       ) : null}
 
+      {pending?.type === "shensu_response" && pending.seatId === playerSeat.id ? (
+        <section className="response-panel" data-testid="shensu-response">
+          <div>
+            <p className="eyebrow">神速</p>
+            <h2>{pending.mode === "skip_judge_draw" ? "是否发动第一项" : "是否发动第二项"}</h2>
+            <p>{pending.message}</p>
+            <p>{selectedTargetNames ? `已选目标：${selectedTargetNames}` : "点击桌面上的一名可选目标。"}</p>
+          </div>
+          <div className="response-actions card-choice-actions">
+            {pending.mode === "skip_play"
+              ? shensuEquipmentCards.map((card) => {
+                  const selected = selectedSkillCardIds[0] === card.instance_id;
+                  return (
+                    <MiniCard
+                      key={card.instance_id}
+                      card={card}
+                      selected={selected}
+                      label={selected ? "已选" : "弃置"}
+                      reason={`弃置${card.name}发动神速第二项`}
+                      onClick={() =>
+                        setSelectedSkillCardIds((current) =>
+                          current[0] === card.instance_id ? [] : [card.instance_id],
+                        )
+                      }
+                    />
+                  );
+                })
+              : null}
+            <button
+              type="button"
+              onClick={() => handleShensuResponse(true)}
+              disabled={
+                selectedTargetIds.length !== 1 ||
+                (pending.mode === "skip_play" && selectedSkillCardIds.length !== 1)
+              }
+            >
+              {pending.mode === "skip_judge_draw" ? "发动第一项" : "发动第二项"}
+            </button>
+            <button type="button" onClick={() => handleShensuResponse(false)}>
+              不发动
+            </button>
+          </div>
+        </section>
+      ) : null}
+
+      {pending?.type === "fangquan_play_response" && pending.seatId === playerSeat.id ? (
+        <section className="response-panel" data-testid="fangquan-play-response">
+          <div>
+            <p className="eyebrow">放权</p>
+            <h2>是否跳过出牌阶段</h2>
+            <p>{pending.message}</p>
+          </div>
+          <div className="response-actions">
+            <button type="button" onClick={() => handleFangquanPlayResponse(true)}>
+              发动放权
+            </button>
+            <button type="button" onClick={() => handleFangquanPlayResponse(false)}>
+              不发动
+            </button>
+          </div>
+        </section>
+      ) : null}
+
+      {pending?.type === "fangquan_end_response" && pending.seatId === playerSeat.id ? (
+        <section className="response-panel" data-testid="fangquan-end-response">
+          <div>
+            <p className="eyebrow">放权</p>
+            <h2>选择弃牌与额外回合目标</h2>
+            <p>{pending.message}</p>
+            <p>{selectedTargetNames ? `已选目标：${selectedTargetNames}` : "点击桌面上的一名其他角色。"}</p>
+          </div>
+          <div className="response-actions card-choice-actions">
+            {fangquanDiscardCards.map((card) => {
+              const selected = selectedSkillCardIds[0] === card.instance_id;
+              return (
+                <MiniCard
+                  key={card.instance_id}
+                  card={card}
+                  selected={selected}
+                  label={selected ? "已选" : "弃置"}
+                  reason={`弃置${card.name}结算放权`}
+                  onClick={() =>
+                    setSelectedSkillCardIds((current) =>
+                      current[0] === card.instance_id ? [] : [card.instance_id],
+                    )
+                  }
+                />
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => handleFangquanEndResponse(true)}
+              disabled={selectedTargetIds.length !== 1 || selectedSkillCardIds.length !== 1}
+            >
+              弃牌放权
+            </button>
+            <button type="button" onClick={() => handleFangquanEndResponse(false)}>
+              不结算
+            </button>
+          </div>
+        </section>
+      ) : null}
+
       {pending?.type === "keji_response" && pending.seatId === playerSeat.id ? (
         <section className="response-panel" data-testid="keji-response">
           <div>
@@ -2723,7 +3756,7 @@ function App() {
             <p className="eyebrow">流离</p>
             <h2>是否转移杀</h2>
             <p>{pending.message}</p>
-            <p>{selectedTargetNames ? `已选目标：${selectedTargetNames}` : "先选一张手牌，再点桌面上的合法目标。"}</p>
+            <p>{selectedTargetNames ? `已选目标：${selectedTargetNames}` : "先选一张手牌或装备牌，再点桌面上的合法目标。"}</p>
           </div>
           <div className="response-actions card-choice-actions">
             {liuliCards.map((card) => (
@@ -2815,6 +3848,35 @@ function App() {
         </section>
       ) : null}
 
+      {pending?.type === "beige_club_discard_response" && pending.sourceSeatId === playerSeat.id ? (
+        <section className="response-panel" data-testid="beige-club-discard-response">
+          <div>
+            <p className="eyebrow">悲歌</p>
+            <h2>弃置伤害来源的牌</h2>
+            <p>{pending.message}</p>
+          </div>
+          <div className="response-actions card-choice-actions">
+            {beigeClubDiscardCards.map((card) => (
+              <MiniCard
+                key={card.instance_id}
+                card={card}
+                selected={selectedSkillCardIds.includes(card.instance_id)}
+                label={selectedSkillCardIds.includes(card.instance_id) ? "已选" : "弃置"}
+                reason={`因悲歌弃置${card.name}`}
+                onClick={() => handleCardClick(card)}
+              />
+            ))}
+            <button
+              type="button"
+              onClick={handleBeigeClubDiscard}
+              disabled={selectedSkillCardIds.length !== pending.requiredCount}
+            >
+              弃置{pending.requiredCount}张
+            </button>
+          </div>
+        </section>
+      ) : null}
+
       {pending?.type === "fankui_response" && pending.targetSeatId === playerSeat.id ? (
         <section className="response-panel" data-testid="fankui-response">
           <div>
@@ -2839,26 +3901,82 @@ function App() {
         </section>
       ) : null}
 
+      {pending?.type === "fanjian_suit_response" && pending.targetSeatId === playerSeat.id ? (
+        <section className="response-panel" data-testid="fanjian-suit-response">
+          <div>
+            <p className="eyebrow">反间</p>
+            <h2>声明花色</h2>
+            <p>{pending.message}</p>
+          </div>
+          <div className="response-actions">
+            {(["黑桃", "红桃", "梅花", "方片"] as DeclaredSuit[]).map((suit) => (
+              <button type="button" key={suit} onClick={() => handleFanjianSuitResponse(suit)}>
+                {suit}
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       {pending?.type === "yiji_response" && pending.targetSeatId === playerSeat.id ? (
         <section className="response-panel" data-testid="yiji-response">
           <div>
             <p className="eyebrow">遗计</p>
-            <h2>是否分发摸到的牌</h2>
+            <h2>{pending.revealedCards ? "分配遗计牌" : "是否发动遗计"}</h2>
             <p>{pending.message}</p>
-            <p>{selectedTargetNames ? `交给：${selectedTargetNames}` : "点击桌面上的一名角色，令其获得牌。"}</p>
           </div>
-          <div className="response-actions">
-            <button
-              type="button"
-              onClick={() => handleYijiResponse(true)}
-              disabled={selectedTargetIds.length !== 1}
-            >
-              发动遗计（{pending.drawCount}张）
-            </button>
-            <button type="button" onClick={() => handleYijiResponse(false)}>
-              不发动
-            </button>
-          </div>
+          {pending.revealedCards ? (
+            <div className="response-actions yiji-allocation-actions">
+              {pending.revealedCards.map((card) => (
+                <label className="yiji-allocation-row" key={card.instance_id}>
+                  <MiniCard
+                    card={card}
+                    disabled
+                    label="遗计牌"
+                    reason={`遗计牌：${card.name}`}
+                  />
+                  <span>交给</span>
+                  <select
+                    value={yijiAssignments[card.instance_id] ?? ""}
+                    onChange={(event) =>
+                      handleYijiRecipientChange(
+                        card.instance_id,
+                        event.target.value === "" ? null : Number(event.target.value),
+                      )
+                    }
+                  >
+                    <option value="">选择角色</option>
+                    {pending.validTargetIds.map((seatId) => {
+                      const seat = game.seats[seatId];
+                      return (
+                        <option key={seatId} value={seatId}>
+                          {seat.id === playerSeat.id ? `${seat.general.name}（自己）` : seat.general.name}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </label>
+              ))}
+              <button
+                type="button"
+                onClick={handleConfirmYijiDistribution}
+                disabled={pending.revealedCards.some(
+                  (card) => yijiAssignments[card.instance_id] === null || yijiAssignments[card.instance_id] === undefined,
+                )}
+              >
+                确认分配
+              </button>
+            </div>
+          ) : (
+            <div className="response-actions">
+              <button type="button" onClick={() => handleYijiResponse(true)}>
+                发动遗计（{pending.drawCount}张）
+              </button>
+              <button type="button" onClick={() => handleYijiResponse(false)}>
+                不发动
+              </button>
+            </div>
+          )}
         </section>
       ) : null}
 
@@ -2921,6 +4039,49 @@ function App() {
         </section>
       ) : null}
 
+      {pending?.type === "ganglie_cost_response" && pending.sourceSeatId === playerSeat.id ? (
+        <section className="response-panel" data-testid="ganglie-cost-response">
+          <div>
+            <p className="eyebrow">刚烈</p>
+            <h2>选择代价</h2>
+            <p>{pending.message}</p>
+          </div>
+          <div className="response-actions card-choice-actions">
+            {ganglieDiscardCards.map((card) => {
+              const selected = selectedSkillCardIds.includes(card.instance_id);
+              return (
+                <MiniCard
+                  key={card.instance_id}
+                  card={card}
+                  selected={selected}
+                  label={selected ? "已选" : "弃置"}
+                  reason={`弃置${card.name}结算刚烈`}
+                  onClick={() =>
+                    setSelectedSkillCardIds((current) =>
+                      current.includes(card.instance_id)
+                        ? current.filter((id) => id !== card.instance_id)
+                        : current.length >= 2
+                          ? [current[1], card.instance_id]
+                          : [...current, card.instance_id],
+                    )
+                  }
+                />
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => handleGanglieCostResponse(selectedSkillCardIds.slice(0, 2))}
+              disabled={selectedSkillCardIds.length !== 2}
+            >
+              弃2张手牌
+            </button>
+            <button type="button" onClick={() => handleGanglieCostResponse(null)}>
+              受1点伤害
+            </button>
+          </div>
+        </section>
+      ) : null}
+
       {pending?.type === "xiaoji_response" && pending.seatId === playerSeat.id ? (
         <section className="response-panel" data-testid="xiaoji-response">
           <div>
@@ -2970,6 +4131,16 @@ function App() {
             <p>{pending.message}</p>
           </div>
           <div className="response-actions card-choice-actions">
+            {longdanResponseMode === "shan" ? (
+              <button
+                type="button"
+                className={isLongdanResponseSelected ? "is-selected" : undefined}
+                onClick={() => handleSkillClick("龙胆")}
+                data-testid="response-skill-longdan"
+              >
+                {isLongdanResponseSelected ? "取消龙胆" : "龙胆：杀当闪"}
+              </button>
+            ) : null}
             {shanCards.map((card) => (
               <MiniCard
                 key={card.instance_id}
@@ -3025,6 +4196,54 @@ function App() {
         </section>
       ) : null}
 
+      {pending?.type === "xiangle_response" && pending.sourceSeatId === playerSeat.id ? (
+        <section className="response-panel" data-testid="xiangle-response">
+          <div>
+            <p className="eyebrow">享乐</p>
+            <h2>弃置1张基本牌</h2>
+            <p>{pending.message}</p>
+          </div>
+          <div className="response-actions card-choice-actions">
+            {xiangleBasicCards.map((card) => (
+              <MiniCard
+                key={card.instance_id}
+                card={card}
+                label="弃置"
+                reason={`弃置${card.name}，令杀继续结算`}
+                onClick={() => handleXiangleResponse(card.instance_id)}
+              />
+            ))}
+            <button type="button" onClick={() => handleXiangleResponse(null)}>
+              不弃置，令杀无效
+            </button>
+          </div>
+        </section>
+      ) : null}
+
+      {pending?.type === "qiangxi_cost_response" && pending.sourceSeatId === playerSeat.id ? (
+        <section className="response-panel" data-testid="qiangxi-cost-response">
+          <div>
+            <p className="eyebrow">强袭</p>
+            <h2>选择发动代价</h2>
+            <p>{pending.message}</p>
+          </div>
+          <div className="response-actions card-choice-actions">
+            {qiangxiWeaponOptions.map((option) => (
+              <MiniCard
+                key={option.key}
+                card={option.card}
+                label={`弃${option.zone}`}
+                reason={`弃置${option.zone}${option.card.name}发动强袭`}
+                onClick={() => handleQiangxiCost(option.key)}
+              />
+            ))}
+            <button type="button" onClick={() => handleQiangxiCost(null)}>
+              失去1点体力
+            </button>
+          </div>
+        </section>
+      ) : null}
+
       {pending?.type === "qinglong_followup_response" && pending.sourceSeatId === playerSeat.id ? (
         <section className="response-panel" data-testid="qinglong-followup-response">
           <div>
@@ -3053,18 +4272,28 @@ function App() {
         <section className="response-panel" data-testid="cixiong-response">
           <div>
             <p className="eyebrow">雌雄双股剑</p>
-            <h2>弃1张手牌或让对方摸牌</h2>
+            <h2>选择1张手牌弃置</h2>
             <p>{pending.message}</p>
           </div>
           <div className="response-actions card-choice-actions">
+            {cixiongCards.map((card) => (
+              <MiniCard
+                key={card.instance_id}
+                card={card}
+                selected={selectedSkillCardIds[0] === card.instance_id}
+                label={selectedSkillCardIds[0] === card.instance_id ? "已选" : "弃置"}
+                reason={`弃置${card.name}响应雌雄双股剑`}
+                onClick={() => setSelectedSkillCardIds([card.instance_id])}
+              />
+            ))}
             <button
               type="button"
-              onClick={() => handleCixiongResponse(true)}
-              disabled={playerSeat.hand.length === 0}
+              onClick={() => handleCixiongResponse(selectedSkillCardIds[0] ?? null)}
+              disabled={selectedSkillCardIds.length !== 1}
             >
-              弃置1张手牌
+              弃置所选手牌
             </button>
-            <button type="button" onClick={() => handleCixiongResponse(false)}>
+            <button type="button" onClick={() => handleCixiongResponse(null)}>
               让对方摸1张
             </button>
           </div>
@@ -3079,10 +4308,51 @@ function App() {
             <p>{pending.message}</p>
           </div>
           <div className="response-actions card-choice-actions">
-            <button type="button" onClick={() => handleHanbingResponse(true)}>
+            {hanbingOptions.map((option) =>
+              option.card ? (
+                <MiniCard
+                  key={option.key}
+                  card={option.card}
+                  selected={selectedSkillCardIds.includes(option.key)}
+                  label={selectedSkillCardIds.includes(option.key) ? "已选" : "弃置"}
+                  reason={`弃置${option.zone}${option.label}`}
+                  onClick={() =>
+                    setSelectedSkillCardIds((current) =>
+                      current.includes(option.key)
+                        ? current.filter((key) => key !== option.key)
+                        : current.length >= 2
+                          ? current
+                          : [...current, option.key],
+                    )
+                  }
+                />
+              ) : (
+                <button
+                  type="button"
+                  key={option.key}
+                  className={selectedSkillCardIds.includes(option.key) ? "is-selected" : undefined}
+                  onClick={() =>
+                    setSelectedSkillCardIds((current) =>
+                      current.includes(option.key)
+                        ? current.filter((key) => key !== option.key)
+                        : current.length >= 2
+                          ? current
+                          : [...current, option.key],
+                    )
+                  }
+                >
+                  {selectedSkillCardIds.includes(option.key) ? "已选" : "弃置"}{option.label}
+                </button>
+              ),
+            )}
+            <button
+              type="button"
+              onClick={() => handleHanbingResponse(selectedSkillCardIds.slice(0, 2))}
+              disabled={selectedSkillCardIds.length !== 2}
+            >
               发动寒冰剑
             </button>
-            <button type="button" onClick={() => handleHanbingResponse(false)}>
+            <button type="button" onClick={() => handleHanbingResponse(null)}>
               不发动，造成伤害
             </button>
           </div>
@@ -3121,6 +4391,20 @@ function App() {
             <p>{pending.message}</p>
           </div>
           <div className="response-actions card-choice-actions">
+            {longdanResponseMode ? (
+              <button
+                type="button"
+                className={isLongdanResponseSelected ? "is-selected" : undefined}
+                onClick={() => handleSkillClick("龙胆")}
+                data-testid="response-skill-longdan"
+              >
+                {isLongdanResponseSelected
+                  ? "取消龙胆"
+                  : longdanResponseMode === "shan"
+                    ? "龙胆：杀当闪"
+                    : "龙胆：闪当杀"}
+              </button>
+            ) : null}
             {basicResponseCards.map((card) => (
               <MiniCard
                 key={card.instance_id}
@@ -3130,6 +4414,35 @@ function App() {
                 onClick={() => handleBasicResponse("card", card.instance_id)}
               />
             ))}
+            {canUseZhangbaForBasicResponse ? (
+              <>
+                {playerSeat.hand.map((card) => (
+                  <MiniCard
+                    key={`zhangba-basic-${card.instance_id}`}
+                    card={card}
+                    selected={selectedSkillCardIds.includes(card.instance_id)}
+                    label={selectedSkillCardIds.includes(card.instance_id) ? "已选" : "丈八"}
+                    reason="选择两张牌当【杀】响应"
+                    onClick={() =>
+                      setSelectedSkillCardIds((current) =>
+                        current.includes(card.instance_id)
+                          ? current.filter((id) => id !== card.instance_id)
+                          : current.length >= 2
+                            ? [current[1], card.instance_id]
+                            : [...current, card.instance_id],
+                      )
+                    }
+                  />
+                ))}
+                <button
+                  type="button"
+                  onClick={() => handleBasicResponse("card", selectedSkillCardIds.slice(0, 2))}
+                  disabled={selectedSkillCardIds.length !== 2}
+                >
+                  丈八当杀
+                </button>
+              </>
+            ) : null}
             {wuxieCards.map((card) => (
               <MiniCard
                 key={card.instance_id}
@@ -3154,6 +4467,16 @@ function App() {
             <p>{pending.message}</p>
           </div>
           <div className="response-actions card-choice-actions">
+            {longdanResponseMode === "sha" ? (
+              <button
+                type="button"
+                className={isLongdanResponseSelected ? "is-selected" : undefined}
+                onClick={() => handleSkillClick("龙胆")}
+                data-testid="response-skill-longdan"
+              >
+                {isLongdanResponseSelected ? "取消龙胆" : "龙胆：闪当杀"}
+              </button>
+            ) : null}
             {duelShaCards.map((card) => (
               <MiniCard
                 key={card.instance_id}
@@ -3163,6 +4486,35 @@ function App() {
                 onClick={() => handleDuelShaResponse(true, card.instance_id)}
               />
             ))}
+            {canUseZhangbaForDuel ? (
+              <>
+                {playerSeat.hand.map((card) => (
+                  <MiniCard
+                    key={`zhangba-duel-${card.instance_id}`}
+                    card={card}
+                    selected={selectedSkillCardIds.includes(card.instance_id)}
+                    label={selectedSkillCardIds.includes(card.instance_id) ? "已选" : "丈八"}
+                    reason="选择两张牌当【杀】响应决斗"
+                    onClick={() =>
+                      setSelectedSkillCardIds((current) =>
+                        current.includes(card.instance_id)
+                          ? current.filter((id) => id !== card.instance_id)
+                          : current.length >= 2
+                            ? [current[1], card.instance_id]
+                            : [...current, card.instance_id],
+                      )
+                    }
+                  />
+                ))}
+                <button
+                  type="button"
+                  onClick={() => handleDuelShaResponse(true, selectedSkillCardIds.slice(0, 2))}
+                  disabled={selectedSkillCardIds.length !== 2}
+                >
+                  丈八当杀
+                </button>
+              </>
+            ) : null}
             <button type="button" onClick={() => handleDuelShaResponse(false)}>
               不出杀，承受伤害
             </button>
@@ -3202,7 +4554,17 @@ function App() {
             <p>{pending.message}</p>
           </div>
           <div className="response-actions card-choice-actions">
-            {playerSeat.hand.filter((card) => isCardUsableAsSha(playerSeat, card)).map((card) => (
+            {longdanResponseMode === "sha" ? (
+              <button
+                type="button"
+                className={isLongdanResponseSelected ? "is-selected" : undefined}
+                onClick={() => handleSkillClick("龙胆")}
+                data-testid="response-skill-longdan"
+              >
+                {isLongdanResponseSelected ? "取消龙胆" : "龙胆：闪当杀"}
+              </button>
+            ) : null}
+            {jiedaoShaCards.map((card) => (
               <MiniCard
                 key={card.instance_id}
                 card={card}
@@ -3211,8 +4573,100 @@ function App() {
                 onClick={() => handleJiedaoResponse(true, card.instance_id)}
               />
             ))}
+            {canUseZhangbaForJiedao ? (
+              <>
+                {playerSeat.hand.map((card) => (
+                  <MiniCard
+                    key={`zhangba-jiedao-${card.instance_id}`}
+                    card={card}
+                    selected={selectedSkillCardIds.includes(card.instance_id)}
+                    label={selectedSkillCardIds.includes(card.instance_id) ? "已选" : "丈八"}
+                    reason="选择两张牌当【杀】响应借刀杀人"
+                    onClick={() =>
+                      setSelectedSkillCardIds((current) =>
+                        current.includes(card.instance_id)
+                          ? current.filter((id) => id !== card.instance_id)
+                          : current.length >= 2
+                            ? [current[1], card.instance_id]
+                            : [...current, card.instance_id],
+                      )
+                    }
+                  />
+                ))}
+                <button
+                  type="button"
+                  onClick={() => handleJiedaoResponse(true, selectedSkillCardIds.slice(0, 2))}
+                  disabled={selectedSkillCardIds.length !== 2}
+                >
+                  丈八当杀
+                </button>
+              </>
+            ) : null}
             <button type="button" onClick={() => handleJiedaoResponse(false)}>
               交出武器
+            </button>
+          </div>
+        </section>
+      ) : null}
+
+      {pending?.type === "qihu_sha_response" && pending.forcedSeatId === playerSeat.id ? (
+        <section className="response-panel" data-testid="qihu-sha-response">
+          <div>
+            <p className="eyebrow">驱虎</p>
+            <h2>需要使用杀</h2>
+            <p>{pending.message}</p>
+          </div>
+          <div className="response-actions card-choice-actions">
+            {longdanResponseMode === "sha" ? (
+              <button
+                type="button"
+                className={isLongdanResponseSelected ? "is-selected" : undefined}
+                onClick={() => handleSkillClick("龙胆")}
+                data-testid="response-skill-longdan"
+              >
+                {isLongdanResponseSelected ? "取消龙胆" : "龙胆：闪当杀"}
+              </button>
+            ) : null}
+            {qihuShaCards.map((card) => (
+              <MiniCard
+                key={card.instance_id}
+                card={card}
+                label="出杀"
+                reason={`因驱虎对目标使用${card.name}`}
+                onClick={() => handleQihuResponse(true, card.instance_id)}
+              />
+            ))}
+            {canUseZhangbaForQihu ? (
+              <>
+                {playerSeat.hand.map((card) => (
+                  <MiniCard
+                    key={`zhangba-qihu-${card.instance_id}`}
+                    card={card}
+                    selected={selectedSkillCardIds.includes(card.instance_id)}
+                    label={selectedSkillCardIds.includes(card.instance_id) ? "已选" : "丈八"}
+                    reason="选择两张牌当【杀】响应驱虎"
+                    onClick={() =>
+                      setSelectedSkillCardIds((current) =>
+                        current.includes(card.instance_id)
+                          ? current.filter((id) => id !== card.instance_id)
+                          : current.length >= 2
+                            ? [current[1], card.instance_id]
+                            : [...current, card.instance_id],
+                      )
+                    }
+                  />
+                ))}
+                <button
+                  type="button"
+                  onClick={() => handleQihuResponse(true, selectedSkillCardIds.slice(0, 2))}
+                  disabled={selectedSkillCardIds.length !== 2}
+                >
+                  丈八当杀
+                </button>
+              </>
+            ) : null}
+            <button type="button" onClick={() => handleQihuResponse(false)}>
+              不出杀
             </button>
           </div>
         </section>
@@ -3241,6 +4695,63 @@ function App() {
                 </button>
               ),
             )}
+          </div>
+        </section>
+      ) : null}
+
+      {pending?.type === "shunshou_select_response" && pending.sourceSeatId === playerSeat.id ? (
+        <section className="response-panel" data-testid="shunshou-select-response">
+          <div>
+            <p className="eyebrow">顺手牵羊</p>
+            <h2>选择获得区域</h2>
+            <p>{pending.message}</p>
+          </div>
+          <div className="response-actions card-choice-actions">
+            {shunshouOptions.map((option) =>
+              option.card ? (
+                <MiniCard
+                  key={option.key}
+                  card={option.card}
+                  label="获得"
+                  reason={`获得${option.zone}${option.label}`}
+                  onClick={() => handleShunshouSelect(option.key)}
+                />
+              ) : (
+                <button type="button" key={option.key} onClick={() => handleShunshouSelect(option.key)}>
+                  获得{option.label}
+                </button>
+              ),
+            )}
+          </div>
+        </section>
+      ) : null}
+
+      {pending?.type === "mengjin_response" && pending.sourceSeatId === playerSeat.id ? (
+        <section className="response-panel" data-testid="mengjin-response">
+          <div>
+            <p className="eyebrow">猛进</p>
+            <h2>是否弃置目标一张牌</h2>
+            <p>{pending.message}</p>
+          </div>
+          <div className="response-actions card-choice-actions">
+            {mengjinOptions.map((option) =>
+              option.card ? (
+                <MiniCard
+                  key={option.key}
+                  card={option.card}
+                  label="弃置"
+                  reason={`弃置${option.zone}${option.label}`}
+                  onClick={() => handleMengjinResponse(option.key)}
+                />
+              ) : (
+                <button type="button" key={option.key} onClick={() => handleMengjinResponse(option.key)}>
+                  弃置{option.label}
+                </button>
+              ),
+            )}
+            <button type="button" onClick={() => handleMengjinResponse(null)}>
+              不发动
+            </button>
           </div>
         </section>
       ) : null}
@@ -3476,6 +4987,7 @@ function App() {
               <p>
                 {playerSeat.general.faction} · <HealthHearts hp={playerSeat.hp} maxHp={playerSeat.maxHp} />
                 {playerSeat.chained ? " · 连环" : ""}
+                {playerSeat.turnedOver ? " · 翻面" : ""}
               </p>
             </div>
           </div>
@@ -3536,13 +5048,28 @@ function App() {
               const skillCardSelected = selectedSkillCardIds.includes(card.instance_id);
               const skillCardSelectable =
                 selectedSkillName &&
-                isManualSkillCardSelectable(selectedSkillName, card);
+                isManualSkillCardSelectable(selectedSkillName, card, playerSeat, game);
+              const weaponCardSelected =
+                selectedWeaponAction === "zhangba" &&
+                selectedSkillCardIds.includes(card.instance_id);
+              const weaponCardLimitReached =
+                selectedWeaponAction === "zhangba" &&
+                !weaponCardSelected &&
+                selectedSkillCardIds.length >= 2;
               const skillCardLimitReached =
                 Boolean(selectedSkillName) &&
                 !skillCardSelected &&
                 selectedSkillCardIds.length >= manualSkillCardLimit(selectedSkillName);
               const triggerCardSelected = selectedSkillCardIds.includes(card.instance_id);
               const triggerCardSelectable = isPendingTriggerCardSelectable(card);
+              const fangquanCardSelected =
+                pending?.type === "fangquan_end_response" &&
+                pending.seatId === playerSeat.id &&
+                selectedSkillCardIds.includes(card.instance_id);
+              const fangquanCardSelectable =
+                pending?.type === "fangquan_end_response" &&
+                pending.seatId === playerSeat.id &&
+                pending.discardableCardIds.includes(card.instance_id);
               return (
                 <MiniCard
                   key={card.instance_id}
@@ -3551,11 +5078,16 @@ function App() {
                     !discardPending &&
                     (pendingTriggerSkill
                       ? !triggerCardSelectable
+                      : pending?.type === "fangquan_end_response" &&
+                          pending.seatId === playerSeat.id
+                        ? !fangquanCardSelectable
+                      : selectedWeaponAction === "zhangba"
+                      ? weaponCardLimitReached
                       : selectedSkillName
                       ? !skillCardSelectable || skillCardLimitReached
                       : !info.canPlay)
                   }
-                  selected={selectedCardId === card.instance_id || discardSelected || skillCardSelected || triggerCardSelected}
+                  selected={selectedCardId === card.instance_id || discardSelected || skillCardSelected || triggerCardSelected || weaponCardSelected || fangquanCardSelected}
                   label={
                     pendingTriggerSkill
                       ? triggerCardSelected
@@ -3563,8 +5095,19 @@ function App() {
                         : pendingTriggerSkill === "天香"
                           ? "红桃"
                           : "弃置"
+                      : pending?.type === "fangquan_end_response" &&
+                          pending.seatId === playerSeat.id
+                        ? fangquanCardSelected
+                          ? "已选"
+                          : "弃置"
+                      : selectedWeaponAction === "zhangba"
+                      ? weaponCardSelected
+                        ? "已选"
+                        : "丈八"
                       : selectedSkillName
-                      ? manualSkillCardLabel(selectedSkillName, skillCardSelected)
+                      ? skillCardSelectable || skillCardSelected
+                        ? manualSkillCardLabel(selectedSkillName, skillCardSelected)
+                        : undefined
                       : discardPending
                       ? discardSelected
                         ? "已选"
@@ -3576,8 +5119,13 @@ function App() {
                   reason={
                     pendingTriggerSkill
                       ? `点击选择或取消作为【${pendingTriggerSkill}】的弃牌。`
+                      : pending?.type === "fangquan_end_response" &&
+                          pending.seatId === playerSeat.id
+                        ? "点击选择或取消作为【放权】结束阶段的弃牌。"
+                      : selectedWeaponAction === "zhangba"
+                      ? "点击选择或取消作为【丈八蛇矛】的两张手牌。"
                       : selectedSkillName
-                      ? `点击选择或取消作为【${selectedSkillName}】的手牌。`
+                      ? `点击选择或取消作为【${selectedSkillName}】的牌。`
                       : discardPending
                       ? "点击选择或取消弃置。"
                       : info.reason
@@ -3587,15 +5135,77 @@ function App() {
               );
             })}
           </div>
+          {playerSeat.equipment.length > 0 ? (
+            <div className="equipment-action-strip" data-testid="player-equipment-actions">
+              <span>装备区</span>
+              {playerSeat.equipment.map((card) => {
+                const info = getCardPlayInfo(game, playerSeat.id, card);
+                const skillCardSelected = selectedSkillCardIds.includes(card.instance_id);
+                const canSelectForManualEquipment =
+                  Boolean(selectedSkillName) &&
+                  (selectedSkillName === "制衡" ||
+                    selectedSkillName === "武圣" ||
+                    selectedSkillName === "奇袭" ||
+                    selectedSkillName === "神速") &&
+                  isManualSkillCardSelectable(selectedSkillName, card, playerSeat, game);
+                const canSelectForLiuli =
+                  pendingTriggerSkill === "流离" &&
+                  isPendingTriggerCardSelectable(card);
+                const selected =
+                  selectedCardId === card.instance_id ||
+                  skillCardSelected ||
+                  (canSelectForLiuli && selectedSkillCardIds.includes(card.instance_id));
+                const disabled =
+                  discardPending ||
+                  selectedWeaponAction === "zhangba" ||
+                  (pendingTriggerSkill
+                    ? !canSelectForLiuli
+                    : selectedSkillName
+                      ? !canSelectForManualEquipment
+                      : !info.canPlay);
+                return (
+                  <MiniCard
+                    key={`equipment-action-${card.instance_id}`}
+                    card={card}
+                    disabled={Boolean(disabled)}
+                    selected={selected}
+                    label={
+                      pendingTriggerSkill === "流离"
+                        ? selected
+                          ? "已选"
+                          : "弃置"
+                        : selectedSkillName && canSelectForManualEquipment
+                          ? manualSkillCardLabel(selectedSkillName, selected)
+                          : info.canPlay
+                            ? info.label
+                            : equipmentSlotLabel(getEquipmentSlot(card))
+                    }
+                    reason={
+                      pendingTriggerSkill === "流离"
+                        ? "点击选择或取消作为【流离】的弃牌。"
+                        : selectedSkillName && canSelectForManualEquipment
+                          ? `点击选择或取消作为【${selectedSkillName}】的装备牌。`
+                          : info.reason
+                    }
+                    onClick={() => handleCardClick(card)}
+                  />
+                );
+              })}
+            </div>
+          ) : null}
           <div className="hand-help">
             {discardPending
               ? `手牌上限 ${getHandLimit(playerSeat, game)}，需要弃置 ${getDiscardOverflow(playerSeat, game)} 张。`
+              : pending?.type === "fangquan_end_response" && pending.seatId === playerSeat.id
+              ? "放权：先点一张要弃置的手牌，再点桌面上一名其他角色。"
               : pendingTriggerSkill
-              ? `正在询问【${pendingTriggerSkill}】：选择需要弃置的手牌${pendingTriggerSkill === "悲歌" ? "。" : "，再选择目标。"}`
+              ? `正在询问【${pendingTriggerSkill}】：选择需要弃置的${pendingTriggerSkill === "流离" ? "手牌或装备牌" : "手牌"}${pendingTriggerSkill === "悲歌" ? "。" : "，再选择目标。"}`
+              : selectedWeaponAction === "zhangba"
+              ? "丈八蛇矛：选择两张手牌，再选择一名目标。"
               : selectedSkillName
               ? selectedSkillHint
               : game.turn.activeSeatId === playerSeat.id && game.turn.phase === "出牌"
-              ? "点击可用手牌；杀需要再选择一个座位作为目标。出牌完成后点下方结束出牌。"
+              ? "点击可用手牌；转换技能先点技能再选牌。出牌完成后点下方结束出牌。"
               : autoHumanPhases.has(game.turn.phase) && game.turn.activeSeatId === playerSeat.id
               ? "正在自动完成准备、判定和摸牌。"
               : "等待进入你的出牌阶段。"}
@@ -3654,6 +5264,53 @@ function App() {
                 </button>
               </div>
             ) : null}
+            {!pending &&
+            !selectedWeaponAction &&
+            game.turn.activeSeatId === playerSeat.id &&
+            game.turn.phase === "出牌" &&
+            zhangbaInfo?.canPlay ? (
+              <button
+                type="button"
+                className="weapon-action-button"
+                onClick={() => {
+                  setSelectedCardId(null);
+                  setSelectedSkillName(null);
+                  setSelectedSkillCardIds([]);
+                  setSelectedTargetIds([]);
+                  setSelectedWeaponAction("zhangba");
+                }}
+                data-testid="start-zhangba"
+              >
+                丈八当杀
+              </button>
+            ) : null}
+            {selectedWeaponAction === "zhangba" ? (
+              <div className="selected-card-actions selected-skill-actions" data-testid="selected-weapon-actions">
+                <span>
+                  {selectedTargetNames
+                    ? `丈八蛇矛：已选 ${selectedSkillCardIds.length}/2 张手牌，目标 ${selectedTargetNames}`
+                    : `丈八蛇矛：已选 ${selectedSkillCardIds.length}/2 张手牌，再选择1名目标`}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleConfirmZhangba}
+                  disabled={!canUseSelectedWeaponAction}
+                  data-testid="confirm-zhangba"
+                >
+                  确认丈八出杀
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedWeaponAction(null);
+                    setSelectedSkillCardIds([]);
+                    setSelectedTargetIds([]);
+                  }}
+                >
+                  取消
+                </button>
+              </div>
+            ) : null}
             {selectedSkillName ? (
               <div className="selected-card-actions selected-skill-actions" data-testid="selected-skill-actions">
                 <span>{selectedSkillHint}</span>
@@ -3683,6 +5340,10 @@ function App() {
                 <span>
                   {selectedCard.card_id === "jiedaosharen" && selectedTargetIds.length === 1
                     ? `借刀杀人：已选持刀者 ${selectedTargetNames}，再选第二目标`
+                    : (selectedInfo.maxTargets ?? 1) > 1
+                    ? selectedTargetNames
+                      ? `方天画戟：${selectedTargetNames}`
+                      : `方天画戟：选择 1 至 ${selectedInfo.maxTargets} 名目标`
                     : selectedInfo?.canRecast
                     ? selectedTargetNames
                       ? `铁索连环：${selectedTargetNames}`
@@ -3707,6 +5368,16 @@ function App() {
                       重铸摸牌
                     </button>
                   </>
+                ) : null}
+                {(selectedInfo.maxTargets ?? 1) > 1 ? (
+                  <button
+                    type="button"
+                    onClick={handleConfirmMultiSha}
+                    disabled={selectedTargetIds.length < (selectedInfo.minTargets ?? 1)}
+                    data-testid="confirm-multi-sha"
+                  >
+                    确认出杀
+                  </button>
                 ) : null}
                 <button
                   type="button"

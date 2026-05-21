@@ -218,6 +218,21 @@ Original prompt: 我想制作单人三国杀游戏，8人局，游戏卡牌和�
   - Verified `npm run build` passes: 42 selected generals, 160 deck instances, 0 data issues.
   - Standard web-game client still cannot launch because bundled Chromium is missing; system Edge fallback verification passed with empty console errors.
   - Edge verification artifacts saved under `output/trick-animation-edge/`:
+
+- Latest audit:
+  - 2026-05-18 completed a remaining-fidelity sweep across equipment, trick cards, and the 66 current skill names.
+  - Coverage status:
+    - all 43 card definitions are represented in the current code paths,
+    - all 15 trick / delayed trick cards have live rule handlers,
+    - all 66 skill names are referenced in both game logic and UI code (`output/bugfix-regression/skill-coverage.json` still reports no missing names).
+  - Verified `npm run build` and `output/final-1.0/run-regression.ps1` both pass.
+  - Remaining known fidelity gaps to prioritize next:
+    - `顺手牵羊` still auto-takes the first zone card instead of asking the human source to choose a legal card/zone.
+    - `雌雄双股剑` and `寒冰剑` still compress exact card choice into yes/no prompts plus automatic first-card removal.
+    - `朱雀羽扇` and `铁骑` currently auto-fire even though their original wording is optional.
+    - `制衡` / `离间` / `流离` / `悲歌` still only accept hand cards where the source text says any card.
+    - `悲歌` is still narrowed to allied targets only, and its club result only discards source hand cards instead of any two cards.
+    - `洛神` still has the protective 20-card hard stop rather than matching the original unbounded continue/stop loop exactly.
     - `animation-smoke.json`: confirms real overlays for `无懈可击` and `铁索连环` include trick stage/aura/target line and no console errors.
     - `wuxie-counter-effect.png`: AI uses `无懈可击` to counter `无中生有`, showing counter animation.
     - `tiesuo-effect.png`: player uses `铁索连环` with 2 selected targets, showing target line and chain animation.
@@ -642,3 +657,277 @@ Original prompt: 我想制作单人三国杀游戏，8人局，游戏卡牌和�
   - Verified `npm run build` passes.
   - Ran system Edge browser-module regression with no console errors; artifacts saved under `output/equipment-completeness/`.
   - Remaining separate interaction pass: `方天画戟` final-hand multi-target Sha and `丈八蛇矛` two-card-as-Sha use/response.
+
+- Latest update:
+  - Fixed delayed-trick timing so `乐不思蜀` / `兵粮寸断` / `闪电` now open the `无懈可击` chain before any judgment card is revealed.
+  - Fixed the `闪电` cancel path: a pre-judgment `无懈可击` now discards the `闪电` itself and leaves the draw-pile top judgment card untouched.
+  - Fixed `鬼道` replacement flow so 张角 gains the original judgment card after replacing it with a black card; the same handling now applies to both delayed-trick and skill-judgment replacement windows.
+  - Improved `八卦阵` feedback so the visible table effect uses the actual revealed judgment card and explicitly reports whether it became an automatic `闪`.
+  - Completed real face-down state support:
+    - `悲歌` black-spade result now truly turns the damage source over.
+    - `据守` now draws 3 and turns the user over.
+    - A turned-over character flips face-up at the next preparation phase and skips the whole turn.
+    - Seat UI and debug summary now expose the face-down state.
+  - Added targeted regression coverage under `output/delayed-judge-equipment-sweep/` for pre-judgment Wuxie, Guidao card replacement, Bagua judgment display, and Jushou turn skip.
+  - Re-ran:
+    - `npm run build`
+    - `output/equipment-response-sweep/rule-smoke.ts`
+    - `output/skill-judge-sweep/rule-smoke.ts`
+    - `output/delayed-judge-equipment-sweep/rule-smoke.ts`
+  - System Edge fallback UI verification passed with empty console errors:
+    - Start screen renders, start-game flow works, and the board still renders cleanly.
+    - Screenshot inspected: `output/delayed-judge-equipment-sweep/ui-board.png`.
+
+- Latest update:
+  - Finished the remaining direct equipment pass for `方天画戟` and `丈八蛇矛`.
+    - `方天画戟` now supports the final-hand multi-target Sha flow in both rule logic and player target-selection UI.
+    - `丈八蛇矛` now supports two-card-as-Sha active use plus Sha responses for `南蛮入侵`, `决斗`, and `借刀杀人`.
+    - `激将` can now ask an allied Shu AI equipped with `丈八蛇矛` to provide a virtual Sha when it has no printed Sha in hand.
+  - Kept `青龙偃月刀` follow-up Sha on normal usable-Sha cards only; `青龙偃月刀` and `丈八蛇矛` are both weapons, so they cannot be equipped together in a legal game state.
+  - Added regression coverage under `output/equipment-final-pass/` for:
+    - `方天画戟` three-target Sha,
+    - `丈八蛇矛` active use,
+    - `丈八蛇矛` responses for `南蛮入侵` / `决斗` / `借刀杀人`,
+    - `激将` sourcing a `丈八蛇矛` Sha from a Shu ally.
+  - Re-ran:
+    - `npm run build`
+    - `output/equipment-final-pass/rule-smoke.ts`
+    - `output/equipment-response-sweep/rule-smoke.ts`
+    - `output/skill-judge-sweep/rule-smoke.ts`
+    - `output/delayed-judge-equipment-sweep/rule-smoke.ts`
+
+- Latest update:
+  - Continued the player-choice pass for active skills:
+    - `制衡` now lets the player choose any number of exact hand cards to discard and redraw.
+    - `青囊` now lets the player choose the exact cost card and wounded target.
+    - `强袭` now lets the player choose the exact in-range target before resolving its existing cost rule.
+    - `乱击` now lets the player choose the exact same-suit pair to use as `万箭齐发`.
+    - `结姻` now lets the player choose the exact two hand cards and wounded target.
+  - Kept `苦肉` as a one-click active skill because it has no card/target choice to expose.
+  - Added regression coverage under `output/manual-active-batch9/` for all five new manual active-skill paths.
+  - Re-ran:
+    - `npm run build`
+    - `output/manual-active-batch9/rule-smoke.ts`
+
+- Latest update:
+  - Continued the equipment / active-skill fidelity pass:
+    - `强袭` now gives human players the real cost choice window: discard any available weapon from hand/equipment, or lose 1 HP.
+    - `结姻` now enforces the original male-target restriction in both engine validation and player targeting UI.
+    - `鬼道` can now use black equipment cards for both delayed-trick and skill judgment replacement, while still moving the old judge card into Zhang Jiao's hand.
+    - `方天画戟` now stores a resumable Sha target queue, so later targets still resolve after the first target opens response chains such as Shan / Liuli / weapon follow-ups.
+  - Added/updated regression coverage for:
+    - manual `强袭` cost selection,
+    - `结姻` rejecting wounded female targets,
+    - `方天画戟` continuing after an interrupted first target,
+    - `鬼道` replacing judgment with a black equipment card.
+  - Brought the old phase-trigger regression up to date with the current automatic `克己` / `闭月` rules.
+  - Re-ran:
+    - `npm run build`
+    - `output/manual-active-batch9/rule-smoke.ts`
+    - `output/equipment-final-pass/rule-smoke.ts`
+    - `output/delayed-judge-equipment-sweep/rule-smoke.ts`
+    - `output/equipment-response-sweep/rule-smoke.ts`
+    - `output/skill-judge-sweep/rule-smoke.ts`
+    - `output/final-1.0/run-regression.ps1`
+  - Browser verification:
+    - The standard bundled Playwright client is still blocked by its missing Chromium download.
+    - System Edge fallback verification passed at `http://127.0.0.1:7001/` with 8 seats rendered and no console errors.
+    - Screenshot inspected: `output/manual-active-batch9/ui-board-batch10.png`.
+
+- Latest update:
+  - Continued the original-rule fidelity sweep for skills that were already wired but still over-automated or overpowered:
+    - `仁德` now heals on the first cumulative 2 cards given in the same play phase, not only when 2 are handed over in one activation.
+    - `离间` now enforces two male other characters.
+    - `反间` now pauses for the target to declare a suit before revealing the gained card.
+    - `刚烈` now gives a human damage source the real post-judgment choice: discard two hand cards or take 1 damage.
+    - `天义` now grants exactly one extra Sha and one extra target, instead of accidentally becoming unlimited Sha.
+    - `猛进` now pauses for a human source to decide whether to trigger and which target zone card to discard.
+    - `驱虎` now resolves its win branch as a real forced Sha window instead of directly converting the result into damage.
+  - Added regression coverage under:
+    - `output/skill-fidelity-batch11/`
+    - `output/skill-fidelity-batch12/`
+  - Re-ran:
+    - `npm run build`
+    - `output/skill-fidelity-batch11/rule-smoke.ts`
+    - `output/skill-fidelity-batch12/rule-smoke.ts`
+    - `output/final-1.0/run-regression.ps1`
+  - Browser verification:
+    - System Edge smoke passed at `http://127.0.0.1:7001/` with 8 seats rendered and no console errors.
+    - Screenshot inspected: `output/skill-fidelity-batch12/ui-board.png`.
+
+- Latest update:
+  - Kept `烈弓`, `狂骨`, and `英姿` as automatic-benefit skills by user preference; they do not open player-choice windows.
+  - Reworked `神速` into its original two timing windows:
+    - first option is offered before the judge phase and can skip judge + draw for a virtual distance-free `杀`,
+    - second option is offered before the play phase and lets the player choose the exact equipment to discard plus the exact target,
+    - both options can now be used in the same turn and are tracked independently as `神速一` / `神速二`.
+  - Reworked `放权` into its original split timing:
+    - the player first chooses whether to skip the play phase,
+    - at end phase the player then chooses the exact hand card to discard and the exact recipient of the extra turn,
+    - AI now decides `放权` / `神速二` at the opening of the play phase instead of after already taking normal play actions.
+  - Added new UI windows for:
+    - `神速` first / second option,
+    - `放权` play-phase opt-in,
+    - `放权` end-phase discard + target selection.
+  - Added regression coverage under `output/skill-fidelity-batch13/` for:
+    - `神速` first option timing,
+    - using both `神速` options in the same turn,
+    - split-timing `放权`.
+  - Re-ran:
+    - `npm run build`
+    - `output/skill-fidelity-batch13/rule-smoke.ts`
+    - `output/manual-active-batch9/rule-smoke.ts`
+    - `output/skill-fidelity-batch11/rule-smoke.ts`
+    - `output/skill-fidelity-batch12/rule-smoke.ts`
+    - `output/final-1.0/run-regression.ps1`
+  - Browser verification:
+    - System Edge smoke passed at `http://127.0.0.1:7001/` with no console errors.
+    - Screenshots inspected:
+      - `output/skill-fidelity-batch13/ui-board.png`
+      - `output/skill-fidelity-batch13/ui-shensu-response.png`
+  - Next fidelity candidate from the sweep:
+    - `遗计` still needs true multi-card distribution across one or more recipients instead of the current one-recipient shortcut.
+
+- Latest update:
+  - Finished the remaining `遗计` fidelity gap:
+    - activating `遗计` now reveals the actual top cards instead of immediately dumping a count onto one recipient,
+    - the player assigns each revealed card independently, so self-targeting and split distribution both work,
+    - AI still resolves automatically, but now moves the actual revealed cards rather than drawing straight into a hand.
+  - Updated the existing damage-trigger regression so `遗计` explicitly verifies one card to self and one card to another target.
+  - Re-ran:
+    - `npm run build`
+    - `output/manual-trigger-batch6/damage-trigger-smoke.ts`
+    - `output/final-1.0/run-regression.ps1`
+  - Browser verification:
+    - System Edge smoke passed at `http://127.0.0.1:7001/` with 8 seats rendered and no console errors.
+    - Screenshot inspected: `output/skill-fidelity-batch13/ui-board-after-yiji.png`.
+
+- Latest update:
+  - Finished the next remaining fidelity batch:
+    - `顺手牵羊` now opens a player selection window for target hand/equipment/judgment-zone options instead of auto-taking the first zone card.
+    - `雌雄双股剑` now lets the human target choose the exact hand card to discard; declining still lets the weapon user draw 1.
+    - `寒冰剑` now lets the human source choose the exact two target-zone cards to discard while preventing the original Sha damage.
+    - `悲歌` now can be offered to a human 蔡文姬 after any character takes Sha damage, can use hand/equipment as its cost, and its club result lets a human damage source choose the exact cards to discard.
+  - Added regression coverage under `output/remaining-fidelity-sweep/` for all four paths.
+  - Re-ran:
+    - `npm run build`
+    - `output/remaining-fidelity-sweep/rule-smoke.ts`
+    - `output/final-1.0/run-regression.ps1`
+  - Browser verification:
+    - Standard web-game client still cannot launch because bundled Chromium is missing.
+    - System Edge fallback loaded `http://127.0.0.1:7001/` with no console errors.
+    - Screenshot inspected: `output/remaining-fidelity-sweep/ui-load.png`.
+
+- Latest update:
+  - Fixed `Wusheng` play priority:
+    - red trick cards in hand keep their original trick use,
+    - red equipment cards in hand now equip normally,
+    - red equipment already in the equipment zone can still be used as a virtual `Sha` through `Wusheng`.
+  - Added targeted regression coverage under `output/wusheng-priority-fix/`.
+  - Re-ran:
+    - `npm run build`
+    - `output/wusheng-priority-fix/rule-smoke.ts`
+    - `output/hand-equipment-skill-sweep/rule-smoke.ts`
+    - `output/final-1.0/run-regression.ps1`
+  - Browser verification:
+    - System Edge smoke passed at `http://127.0.0.1:7001/?seed=2026051911` with no console errors.
+
+- Latest update:
+  - Fixed three reported play blockers:
+    - `Lebu` skip-play now resolves before play-phase prompts, so a failed `Lebu` judgment cannot open `Qiaobian` / `Shensu` / `Fangquan` prompts and stall the turn.
+    - `Qianxun` is now checked through a shared protection helper for `Shunshou Qianyang` and `Lebu`, with both target lists and actual trick resolution guarded. `Qiaobian` also cannot move `Lebu` onto a `Qianxun` character.
+    - `Beige` club-result discard UI now supports selecting the required two cards from hand/equipment instead of leaving the confirm button unreachable.
+  - Added regression coverage under `output/bugfix-lebu-qianxun-beige/`.
+  - Re-ran:
+    - `npm run build`
+    - `output/bugfix-lebu-qianxun-beige/rule-smoke.ts`
+    - `output/remaining-fidelity-sweep/rule-smoke.ts`
+    - `output/wusheng-priority-fix/rule-smoke.ts`
+    - `output/final-1.0/run-regression.ps1`
+  - Browser verification:
+    - System Edge smoke passed at `http://127.0.0.1:7001/?seed=2026051909` with no console errors.
+    - Screenshot inspected: `output/bugfix-lebu-qianxun-beige/ui-smoke.png`.
+
+- Latest update:
+  - Converted `国色`, `连环`, `双雄`, and `龙胆` to click-skill-first manual conversion flows:
+    - normal hand-card clicks keep the card's native use and no longer auto-hijack into the skill conversion,
+    - clicking the skill enters selection mode, then eligible cards/targets are chosen before confirming,
+    - `连环` supports no-target recast from the same skill selection flow,
+    - conversion labels now appear only on cards that are legal for the selected conversion skill.
+  - Re-ran:
+    - `npm run build`
+    - inline rule smoke for `国色` / `连环` / `双雄` / `龙胆` conversion and normal-click priority.
+  - Browser verification:
+    - System Edge smoke covered all four skill buttons at `http://127.0.0.1:7001/` with no console errors.
+    - Screenshot inspected: `output/manual-conversion-skill-click-smoke.png`.
+
+- Latest update:
+  - Follow-up audit fixes:
+    - `享乐` no longer auto-discards the first basic card from the attacker. If the human source is affected, a response panel asks which basic card to discard, or lets the player decline and invalidate the Sha.
+    - `龙胆` response-side conversion now follows the click-skill-first model for Sha/Shan response windows, Nanman-style basic responses, Duel, Jiedao Sharen, and Qihu forced Sha.
+    - Cloned pending actions now preserve the `享乐` basic-card candidate list, preventing stale or shared pending state during React updates.
+    - Local AI now skips obviously bad untargeted tricks: `桃园结义`, `五谷丰登`, `南蛮入侵`, and `万箭齐发` are filtered by a simple ally/enemy benefit check instead of being fired just because they are playable.
+  - Re-ran:
+    - `npm run build`
+    - `output/equipment-final-pass/rule-smoke.ts`
+    - `output/equipment-response-sweep/rule-smoke.ts`
+    - `output/hand-equipment-skill-sweep/rule-smoke.ts`
+    - `output/remaining-fidelity-sweep/rule-smoke.ts`
+    - `output/wusheng-priority-fix/rule-smoke.ts`
+    - `output/bugfix-lebu-qianxun-beige/rule-smoke.ts`
+    - inline rule smoke for `享乐` cost choice and `龙胆` Sha-as-Shan / Shan-as-Sha responses.
+    - `output/final-1.0/run-regression.ps1`
+  - Browser verification:
+    - System Edge loaded `http://127.0.0.1:7001/`, started a game, rendered 8 seats, and reported no console errors.
+    - Rechecked at 1366x768 after the AI trick filter; 8 seats rendered and console stayed clean.
+    - Screenshot inspected: `output/audit-response-ui.png`.
+
+- Latest update:
+  - Fixed the reported interaction blockers:
+    - `Qingnang`, `Jieyin`, and `Qiangxi` target clicks now populate the selected target, so their confirm buttons can become enabled.
+    - `Fangquan` and `Shensu` are now available through the click-skill-first manual flow.
+    - Manual `Shensu` now requires selecting an equipped card and passes that exact equipment card into the rule resolver.
+    - Human turns that skip play because of `Lebu` now continue through discard/end automation unless an actual manual discard/pending response is needed.
+  - Added focused regression coverage in `output/current-bugfix-sweep/rule-smoke.ts`.
+  - Re-ran:
+    - `npm run build`
+    - `output/current-bugfix-sweep/rule-smoke.ts`
+    - `output/bugfix-lebu-qianxun-beige/rule-smoke.ts`
+    - `output/manual-trigger-batch7/phase-trigger-smoke.ts`
+    - `output/final-1.0/run-regression.ps1`
+  - Browser verification:
+    - The required web-game client was attempted but still cannot launch because the bundled Chromium browser is missing.
+    - System Edge fallback loaded `http://127.0.0.1:7001/?seed=2026052108`, started a game, rendered 8 seats, and reported no console/page errors.
+    - Screenshot inspected: `output/current-bugfix-sweep/edge-ui.png`.
+
+- Latest update:
+  - Continued UI-level verification after the targeted rule sweep:
+    - Found that `Fangquan` was still easy to misclick because only the small target button selected a target; clicking the targetable character panel itself did nothing.
+    - Made targetable seat panels clickable while preserving portrait-click zoom preview via `stopPropagation`.
+    - Confirmed manual `Fangquan` in System Edge with seed `3`: choose Liu Shan, click skill, select a hand card, click the target seat panel, and the confirm button enables.
+  - Re-ran:
+    - `npm run build`
+    - `output/current-bugfix-sweep/rule-smoke.ts`
+    - `output/bugfix-lebu-qianxun-beige/rule-smoke.ts`
+    - `output/final-1.0/run-regression.ps1`
+  - Browser artifact:
+    - `output/current-bugfix-sweep/fangquan-ui-seat-click.png`
+
+- Latest update:
+  - Fixed the two reported follow-up blockers:
+    - `Qiangxi` now resolves weapon-cost choices by the selected zone key (`hand:` / `equipment:`), so choosing an equipped weapon actually removes it, triggers equipment-lost hooks, and sends it to the discard pile instead of falling back to HP loss.
+    - `Shensu` second mode is no longer a free click-skill active button during the play phase. Human `Shensu` now opens as a play-phase-opening prompt, before normal card play; once declined or missed, it cannot be used after playing cards.
+  - Added focused coverage to `output/current-bugfix-sweep/rule-smoke.ts` for `Qiangxi` weapon cost and `Shensu` opening-prompt timing.
+  - Re-ran:
+    - `npm run build`
+    - `output/current-bugfix-sweep/rule-smoke.ts`
+    - `output/bugfix-lebu-qianxun-beige/rule-smoke.ts`
+    - `output/final-1.0/run-regression.ps1`
+  - Browser verification:
+    - System Edge loaded `http://127.0.0.1:7001/?seed=2026052104` with no console/page errors.
+
+- Latest update:
+  - 2.0 release prep:
+    - Bumped `package.json` / `package-lock.json` to `2.0.0`.
+    - Updated the in-game header badge to `v2.0`.
+    - Updated `README.md` with the 2.0 release notes and kept the Cloudflare deployment instructions current.

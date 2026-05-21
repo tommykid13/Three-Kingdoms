@@ -1058,6 +1058,12 @@ button:disabled {
   opacity: 0.62;
 }
 
+.seat-panel.is-turned-over {
+  background:
+    linear-gradient(135deg, rgba(44, 54, 66, 0.16), transparent 46%),
+    rgba(247, 248, 249, 0.94);
+}
+
 .lord-ribbon {
   position: absolute;
   right: -10px;
@@ -1275,6 +1281,12 @@ button:disabled {
   border: 1px solid rgba(142, 31, 45, 0.28);
   background: rgba(142, 31, 45, 0.12) !important;
   color: #842332;
+}
+
+.turned-over-chip {
+  border: 1px solid rgba(60, 73, 86, 0.28);
+  background: rgba(60, 73, 86, 0.12) !important;
+  color: #3c4956;
 }
 
 .health-hearts {
@@ -1780,8 +1792,38 @@ button:disabled {
   height: 146px;
 }
 
+.yiji-allocation-actions {
+  align-items: stretch;
+  max-width: min(760px, 100%);
+}
+
+.yiji-allocation-row {
+  display: grid;
+  grid-template-columns: 104px auto minmax(150px, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-width: min(320px, 100%);
+}
+
+.yiji-allocation-row .mini-card {
+  width: 104px;
+  height: 146px;
+}
+
+.yiji-allocation-row select {
+  width: 100%;
+  min-width: 150px;
+}
+
 .response-actions button {
   padding: 0 14px;
+}
+
+.response-actions button.is-selected {
+  border-color: #176e5d;
+  background: #eef8f4;
+  color: #174c41;
+  box-shadow: 0 0 0 3px rgba(23, 110, 93, 0.14);
 }
 
 .player-console {
@@ -1989,6 +2031,43 @@ button:disabled {
   min-height: 190px;
   overflow-x: auto;
   padding: 14px 2px 10px;
+}
+
+.equipment-action-strip {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  min-height: 98px;
+  margin-top: 6px;
+  padding: 8px 2px 6px;
+  overflow-x: auto;
+  border-top: 1px solid rgba(30, 35, 37, 0.08);
+}
+
+.equipment-action-strip > span {
+  flex: 0 0 auto;
+  align-self: center;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #edf4ef;
+  color: #335b4f;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.equipment-action-strip .mini-card {
+  flex-basis: 74px;
+  width: 74px;
+  height: 104px;
+}
+
+.equipment-action-strip .mini-card-name {
+  bottom: 24px;
+  font-size: 0.72rem;
+}
+
+.equipment-action-strip .mini-card em {
+  font-size: 0.66rem;
 }
 
 .mini-card {

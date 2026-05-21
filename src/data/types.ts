@@ -55,7 +55,7 @@ export type DeckInstance = {
   suit: string;
   suit_symbol: string;
   rank: string;
-  color: "red" | "black";
+  color: "red" | "black" | "none";
   is_ex_card: boolean;
   imagePath: string | null;
 };

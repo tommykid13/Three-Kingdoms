@@ -237,6 +237,7 @@ export const buildAiDecisionPayload = (
       round: game.turn.round,
       phase: game.turn.phase,
       shaPlayed: game.turn.shaPlayed,
+      shaUsedCount: game.turn.shaUsedCount,
       jiuUsed: game.turn.jiuUsed,
       drunkShaBonus: game.turn.drunkShaBonus,
       tianyiState: game.turn.tianyiState,
