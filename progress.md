@@ -931,3 +931,60 @@ Original prompt: 我想制作单人三国杀游戏，8人局，游戏卡牌和�
     - Bumped `package.json` / `package-lock.json` to `2.0.0`.
     - Updated the in-game header badge to `v2.0`.
     - Updated `README.md` with the 2.0 release notes and kept the Cloudflare deployment instructions current.
+
+- Latest update:
+  - Started 2.1 art cleanup work:
+    - Added `scripts/tune-general-images.mjs`, a repeatable Sharp-based pipeline that reads original general cards from `Comic/` and outputs tuned display art to `public/assets/generals/`.
+    - Added npm scripts:
+      - `npm run art:generals:preview`
+      - `npm run art:generals:apply`
+    - Generated before/after preview sheets under `output/general-art-v2.1/` and `output/general-art-v2.1-bright/`.
+    - Applied the balanced `clean` profile to all 42 general display images, preserving original source art in `Comic/`.
+    - Bumped the project to `2.1.0` and updated the in-game header badge to `v2.1`.
+
+- Latest update:
+  - Redirected 2.1 art direction from pure color tuning to actual redraw planning:
+    - User-provided `wujiang/曹操.png` is now treated as the visual benchmark for cleaner, brighter, less over-rendered card art.
+    - Added `scripts/generate-general-redraw-prompts.mjs`.
+    - Added npm script `npm run art:generals:redraw-prompts`.
+    - Generated 42 per-general redraw prompts under `output/general-art-v2.1-redraw/`.
+    - Each prompt includes unique visual DNA and anti-similarity guidance so generals do not collapse into the same face/body type.
+    - Added `docs/general-art-redraw-v2.1.md` to document the redraw rules.
+  - Locked the approved 2.1 visual direction after the five-general style test:
+    - Stored the approved style sheet at `docs/art-references/approved-general-style-v2.1.png`.
+    - Added `scripts/apply-approved-general-samples.mjs` and npm script `npm run art:generals:apply-approved-samples`.
+    - Applied the approved samples for 曹操、刘备、赵云、貂蝉、张飞 into `public/assets/generals/`.
+    - Verified the approved samples in both setup and table views with browser screenshots under `output/general-art-v2.1-approved-samples/`.
+  - Completed the first full 42-general 2.1 art replacement pass:
+    - Added `scripts/apply-generated-general-sheet.mjs` to crop generated contact sheets into game-ready assets.
+    - Initially tested a local name-plaque correction pass, then removed it because it looked like an extra pasted label and broke card integration.
+    - Replaced all 42 `public/assets/generals/*.png` assets with the cleaner 2.1 visual direction.
+    - Corrected a rejected batch where 孙权、周瑜、吕布、诸葛亮 had overly similar faces; regenerated the Wu pair separately so 孙权 and 周瑜 are visually distinct.
+    - Generated the full proof sheet at `output/general-art-v2.1-generated-batches/all-generals-proof.png`.
+    - Browser-verified setup and table views at seed `2026052109`; no broken images or console errors.
+  - Applied a targeted art correction pass after visual review:
+    - Regenerated 蔡文姬、大乔、黄月英、貂蝉、小乔 with stronger role silhouettes so they no longer read as the same beauty archetype.
+    - Regenerated 周瑜、诸葛亮、刘禅 so 周瑜 reads as a Wu naval admiral, 诸葛亮 as a mountain scholar, and 刘禅 as a young adult weak ruler instead of a child.
+    - Restored all 42 general images from the unmodified batch crops so no card has an extra pasted name plaque; native in-image names are kept even if imperfect.
+
+- Latest update:
+  - 2.5 release prep:
+    - Bumped `package.json` / `package-lock.json` to `2.5.0`.
+    - Updated the in-game header badge to `v2.5`.
+    - Added `scripts/normalize-general-card-margins.mjs` and npm script `npm run art:generals:normalize-margins`.
+    - Normalized all 42 general card PNGs so the visible card frame uses consistent left/right margins while preserving native card art and avoiding pasted name labels.
+    - Generated proof output at `output/general-art-v2.1-normalized-preview/all-generals-normalized-proof.png`.
+
+- Latest update:
+  - Fixed the Liu Shan `Fangquan` timing bug:
+    - `skipPlay` now blocks active card/skill play checks, so after choosing `Fangquan` the player cannot keep playing cards in the skipped play phase.
+    - `Fangquan` is no longer a normal click-to-activate skill button; it only resolves from the play-phase-opening prompt.
+    - Starting a real play action closes the `Fangquan` opening window for that turn, preventing "play first, then Fangquan" sequencing.
+  - Renamed the shipped app title from `肥喵多尼的AI三国杀` to `线上AI 三国杀`.
+  - Added the fixed lower-right signature `肥喵多尼制作`.
+
+- Latest update:
+  - 2.6 release prep:
+    - Bumped `package.json` / `package-lock.json` to `2.6.0`.
+    - Updated the in-game header badge to `v2.6`.
+    - Prepared the `Fangquan` timing fix, app rename, and signature changes for GitHub + Cloudflare release.

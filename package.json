@@ -1,10 +1,16 @@
 {
   "name": "three-king-solo-sanguosha",
-  "version": "2.0.0",
+  "version": "2.6.0",
   "private": true,
   "type": "module",
   "scripts": {
     "prepare:data": "node scripts/generate-data.mjs",
+    "art:generals:preview": "node scripts/tune-general-images.mjs",
+    "art:generals:apply": "node scripts/tune-general-images.mjs --apply",
+    "art:generals:redraw-prompts": "node scripts/generate-general-redraw-prompts.mjs",
+    "art:generals:apply-approved-samples": "node scripts/apply-approved-general-samples.mjs",
+    "art:generals:apply-sheet": "node scripts/apply-generated-general-sheet.mjs",
+    "art:generals:normalize-margins": "node scripts/normalize-general-card-margins.mjs",
     "start:dev": "node scripts/start-dev-server.mjs",
     "dev": "npm run prepare:data && vite --host 127.0.0.1 --port 7001 --strictPort",
     "build": "npm run prepare:data && tsc --noEmit && vite build",

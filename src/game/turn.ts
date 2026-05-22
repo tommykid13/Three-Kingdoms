@@ -2185,7 +2185,22 @@ const canUseCardNow = (game: GameState, seat: Seat) =>
   !game.pendingAction &&
   !game.winner &&
   game.turn.activeSeatId === seat.id &&
-  game.turn.phase === "出牌";
+  game.turn.phase === "出牌" &&
+  !game.turn.skipPlay;
+
+const closeFangquanOpeningWindowForPlayAction = (game: GameState, seat: Seat) => {
+  if (
+    seat.controller === "human" &&
+    hasSkill(seat, "放权") &&
+    game.turn.activeSeatId === seat.id &&
+    game.turn.phase === "出牌" &&
+    !game.turn.skipPlay &&
+    !hasUsedSkillThisTurn(game, "放权") &&
+    !hasUsedSkillThisTurn(game, "放权询问")
+  ) {
+    markSkillUsedThisTurn(game, "放权询问");
+  }
+};
 
 const findHandOrEquipmentCard = (seat: Seat, instanceId: string) =>
   seat.hand.find((card) => card.instance_id === instanceId) ??
@@ -5880,6 +5895,7 @@ export const playCardFromHand = (
     appendLog(game, info.reason);
     return game;
   }
+  closeFangquanOpeningWindowForPlayAction(game, actor);
 
   if (isSha(card)) {
     const target = targetSeatId === undefined ? null : game.seats[targetSeatId];
@@ -6117,6 +6133,7 @@ export const playZhangbaShaFromHand = (
     appendLog(game, "【丈八蛇矛】需要选择两张仍在手中的牌。");
     return game;
   }
+  closeFangquanOpeningWindowForPlayAction(game, actor);
 
   const playedSha = normalizeCardUsedAsSha(game, actor, zhangbaSha);
   const damage = 1 + game.turn.drunkShaBonus;
@@ -8878,9 +8895,14 @@ const activateFangquan = (
   seat: Seat,
   selectedTarget?: Seat | null,
   selectedCostCardId?: string | null,
+  fromOpeningPrompt = false,
 ) => {
   if (hasUsedSkillThisTurn(game, "放权")) {
     appendLog(game, `${seat.general.name} 本回合已经发动过【放权】。`);
+    return;
+  }
+  if (seat.controller === "human" && !fromOpeningPrompt) {
+    appendLog(game, "【放权】只能在出牌阶段开始时的询问窗口发动；一旦开始出牌，本回合不能再发动。");
     return;
   }
   if (selectedCostCardId && !seat.hand.some((card) => card.instance_id === selectedCostCardId)) {
@@ -9108,6 +9130,11 @@ export const activateSkillWithSelection = (
     appendLog(game, `【${skillName}】需要在自己的出牌阶段发动。`);
     return game;
   }
+  if (skillName === "放权") {
+    appendLog(game, "【放权】只能在出牌阶段开始时的询问窗口发动；一旦开始出牌，本回合不能再发动。");
+    return game;
+  }
+  closeFangquanOpeningWindowForPlayAction(game, seat);
 
   const uniqueCardIds = [...new Set(cardInstanceIds)];
   const selectedTargetIds = [...new Set(targetSeatIds)];
@@ -9642,21 +9669,6 @@ export const activateSkillWithSelection = (
     return game;
   }
 
-  if (skillName === "放权") {
-    const target = selectedTargets[0];
-    if (!target || target.id === seat.id) {
-      appendLog(game, "【放权】需要选择一名其他角色获得额外回合。");
-      return game;
-    }
-    const cardId = uniqueCardIds[0];
-    if (!cardId) {
-      appendLog(game, "【放权】需要选择一张手牌，回合结束时将弃置它。");
-      return game;
-    }
-    activateFangquan(game, seat, target, cardId);
-    return game;
-  }
-
   appendLog(game, `技能【${skillName}】暂不支持手动选择。`);
   return game;
 };
@@ -9681,6 +9693,11 @@ export const activateSkill = (
     appendLog(game, `【${skillName}】需要在自己的出牌阶段发动。`);
     return game;
   }
+  if (skillName === "放权") {
+    appendLog(game, "【放权】只能在出牌阶段开始时的询问窗口发动；一旦开始出牌，本回合不能再发动。");
+    return game;
+  }
+  closeFangquanOpeningWindowForPlayAction(game, seat);
 
   switch (skillName) {
     case "仁德":
@@ -9715,9 +9732,6 @@ export const activateSkill = (
       break;
     case "天义":
       activateTianyi(game, seat);
-      break;
-    case "放权":
-      activateFangquan(game, seat);
       break;
     case "结姻":
       activateJieyin(game, seat);
@@ -10415,7 +10429,7 @@ export const respondToFangquanPlay = (
   }
 
   if (useSkill) {
-    activateFangquan(game, seat);
+    activateFangquan(game, seat, null, null, true);
   } else {
     appendLog(game, `${seat.general.name} 不发动【放权】。`);
   }
@@ -10754,7 +10768,7 @@ export const getDyingCards = (game: GameState) => {
 };
 
 export const summarizeState = (game: GameState) => ({
-  mode: "肥喵多尼的AI三国杀",
+  mode: "线上AI 三国杀",
   coordinateSystem: "CSS absolute seat ring; seat 0 at bottom center, clockwise around table",
   seed: game.seed,
   round: game.turn.round,

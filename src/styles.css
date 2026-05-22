@@ -295,6 +295,24 @@ button:disabled {
   padding: 0 14px;
 }
 
+.site-signature {
+  position: fixed;
+  right: max(12px, env(safe-area-inset-right));
+  bottom: max(10px, env(safe-area-inset-bottom));
+  z-index: 80;
+  padding: 6px 10px;
+  border: 1px solid rgba(30, 35, 37, 0.12);
+  border-radius: 999px;
+  background: rgba(248, 250, 249, 0.86);
+  color: #506064;
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: 0 8px 22px rgba(26, 31, 33, 0.12);
+  backdrop-filter: blur(10px);
+  pointer-events: none;
+}
+
 .ai-settings-panel {
   width: min(var(--game-content-max), 100%);
   margin: 0 auto 8px;

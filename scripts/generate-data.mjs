@@ -27,9 +27,12 @@ const writeJson = (fileName, payload) => {
   );
 };
 
-const copyFile = (source, targetDir) => {
+const copyFile = (source, targetDir, options = {}) => {
   ensureDir(targetDir);
   const target = path.join(targetDir, path.basename(source));
+  if (options.preserveExisting && fs.existsSync(target)) {
+    return target;
+  }
   fs.copyFileSync(source, target);
   return target;
 };
@@ -99,7 +102,7 @@ generalsRaw.forEach((row) => {
     return;
   }
 
-  copyFile(imagePath, publicGeneralAssetDir);
+  copyFile(imagePath, publicGeneralAssetDir, { preserveExisting: true });
   selectedGenerals.push(toGeneral(row, selectedGenerals.length, imageBaseName));
 });
 

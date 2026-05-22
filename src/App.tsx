@@ -222,7 +222,6 @@ const activeSkillNames = new Set([
   "离间",
   "驱虎",
   "结姻",
-  "放权",
   "黄天",
   "天义",
 ]);
@@ -243,7 +242,6 @@ const manualSkillNames = new Set([
   "离间",
   "驱虎",
   "结姻",
-  "放权",
   "黄天",
   "天义",
 ]);
@@ -803,6 +801,12 @@ const TableActionOverlay = ({ effect }: { effect: GameState["lastEffect"] }) => 
   );
 };
 
+const AppSignature = () => (
+  <div className="site-signature" aria-label="制作署名">
+    肥喵多尼制作
+  </div>
+);
+
 const SetupScreen = ({
   data,
   draft,
@@ -901,6 +905,7 @@ const SetupScreen = ({
           开始身份局
         </button>
       </section>
+      <AppSignature />
     </main>
   );
 };
@@ -1183,6 +1188,7 @@ function App() {
     Boolean(game && playerSeat && selectedSkillName) &&
     game?.turn.activeSeatId === playerSeat?.id &&
     game?.turn.phase === "出牌" &&
+    !game?.turn.skipPlay &&
     !game?.pendingAction &&
     !game?.winner;
   const selectedTargetNames =
@@ -2235,7 +2241,6 @@ function App() {
         if (
           selectedSkillName === "天义" ||
           selectedSkillName === "黄天" ||
-          selectedSkillName === "放权" ||
           selectedSkillName === "神速"
         ) {
           setSelectedTargetIds((current) =>
@@ -2864,6 +2869,8 @@ function App() {
             log: [
               skillName === "巧变"
                 ? "技能【巧变】会在摸牌、出牌、弃牌阶段自动询问是否发动。"
+                : skillName === "放权"
+                ? "技能【放权】只会在出牌阶段开始时询问；开始出牌后本回合不能再发动。"
                 : isSkillImplemented(skillName)
                 ? `技能【${skillName}】已接入，会在对应时机自动触发或作为响应牌生效。`
                 : `技能【${skillName}】已显示，效果将在后续主动技能批次接入。`,
@@ -3326,6 +3333,7 @@ function App() {
           <h1>数据读取失败</h1>
           <p>{error}</p>
         </section>
+        <AppSignature />
       </main>
     );
   }
@@ -3337,6 +3345,7 @@ function App() {
           <h1>正在布置身份局</h1>
           <p>读取武将、卡牌、牌堆并发起手牌。</p>
         </section>
+        <AppSignature />
       </main>
     );
   }
@@ -3361,6 +3370,7 @@ function App() {
           <h1>正在随机身份与武将候选</h1>
           <p>准备本局身份牌和五名候选武将。</p>
         </section>
+        <AppSignature />
       </main>
     );
   }
@@ -3372,6 +3382,7 @@ function App() {
           <h1>桌面状态异常</h1>
           <p>没有找到当前行动角色或玩家座位。</p>
         </section>
+        <AppSignature />
       </main>
     );
   }
@@ -3399,7 +3410,7 @@ function App() {
       <section className="table-header">
         <div>
           <p className="eyebrow">浏览器版单机身份局</p>
-          <h1>肥喵多尼的AI三国杀 <span>v2.0</span></h1>
+          <h1>线上AI 三国杀 <span>v2.6</span></h1>
         </div>
         <div className="header-actions">
           <button
@@ -5467,6 +5478,7 @@ function App() {
           </article>
         </div>
       ) : null}
+      <AppSignature />
     </main>
   );
 }
